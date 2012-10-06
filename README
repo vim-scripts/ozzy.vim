@@ -1,0 +1,36 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=4256
+
+
+Ozzy is very straightforward to use. Once installed, you can start editing your
+favourite files as always. Once you open a file, Ozzy registers it in its database 
+and from then you can easily open that file wherever you are with the following 
+command:
+
+    :Ozzy <file name>
+
+Every time you open a file that has been already registered, Ozzy keeps track of
+some additional information such as the last access time and how many times that file has 
+been opened. If Ozzy has in its database only one file that matches the given <file name> 
+then that file is opened. If Ozzy finds more that one match in its database, it has to 
+decide what is the right file to open. By default Ozzy opens the most frequently used 
+file but you can change this behavior to open the most recently used file. 
+Suppose now that Ozzy has in its database a lot of files with the same name such as 
+'README' files. If opening the most frequently or recently used 'README' does 
+not fit your needs you can still specify a partial path of the file you want to open:
+
+    :Ozzy <partial path>/<file name>
+
+
+Other powerful commands are:
+
+    * OzzyInspect: to open the inspector from where you can view the entire database 
+      content and modify it.
+    
+    * OzzyRemove and OzzyKeepLast: to remove files from the database.
+
+
+Get the lastest version here: https://github.com/gcmt/ozzy.vim
+
+NOTE: Ozzy has been fully tested only on mac os 10.6 and linux platforms. 
+
+NOTE2: Ozzy is still in beta. If something does not work for you let me know about it.
