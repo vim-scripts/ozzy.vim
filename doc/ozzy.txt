@@ -1,11 +1,11 @@
 *ozzy.txt* *ozzy*
 
                                     Ozzy
-            Open most frequently/recently used files from anywhere.
+                     Opens almost any file from anywhere.
 
                                      ~
                               Reference Manual
-                                   v.0.1
+                                   v.0.2
 
 ==============================================================================
 CONTENTS                                                       *ozzy-contents*
@@ -16,8 +16,9 @@ CONTENTS                                                       *ozzy-contents*
     4. Freeze Ozzy ........................... |ozzy-freeze|
     5. Inspector ............................. |ozzy-inspector|
     6. Commands .............................. |ozzy-commands|
-    7. Settings .............................. |ozzy-settings|
-    8. Credits ............................... |ozzy-credits|
+    7. Mappings .............................. |ozzy-mappings|
+    8. Settings .............................. |ozzy-settings|
+    9. Credits ............................... |ozzy-credits|
 
 
 ==============================================================================
@@ -207,9 +208,16 @@ OzzyToggleExtension                                      *OzzyToggleExtension*
 To toggle between 'consider extension' and 'ignore extensions' mode.
 See |g:ozzy_ignore_ext|.
 
+==============================================================================
+7. Mappings                                                    *ozzy-mappings*
+
+<C-o>
+This is a command line mapping used for command line completions.
+See also |g:ozzy_cmdline_completion_map|.
+
 
 ==============================================================================
-7. Settings                                                    *ozzy-settings*
+8. Settings                                                    *ozzy-settings*
 
 ------------------------------------------------------------------------------
 g:ozzy_mode                                                      *g:ozzy_mode* 
@@ -276,7 +284,7 @@ updated if already exists in the database. Below all the accepted patterns:
 
     - <path>/
     all file paths that contains '<path>/'.
-    examples: /doc/ (every file in a folder called 'doc')
+    examples: vim/runtime/doc/ (every file in <anything>/vim/runtime/doc)
 
 default: []
 
@@ -309,6 +317,14 @@ commands shortcuts with their respective 'long version':
     - Okeep : OzzyKeepLast
 
 default: 1
+
+
+------------------------------------------------------------------------------
+g:ozzy_cmdline_completion_map                  *g:ozzy_cmdline_completion_map* 
+
+This is the mapping used for command line completion.
+
+default: '<C-o>'
 
 
 ------------------------------------------------------------------------------
@@ -347,7 +363,7 @@ default: 'freeze'
 
 
 ==============================================================================
-8. Credits                                                      *ozzy-credits*
+9. Credits                                                      *ozzy-credits*
 
 Developed by Giacomo Comitti
 

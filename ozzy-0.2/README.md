@@ -1,12 +1,12 @@
 # Ozzy.vim
 
-**v0.1 beta**
+**v0.2**
 
 
-Ozzy allows you to open frequently or recently used files from anywhere. Just
-give a file name and (if the file has been accessed at leat once in the past)
-the most frequently used file or the most recently accessed one is picked for 
-you, no more entire paths to digit or folder to cd into!
+Ozzy allows you to open almost any file from anywhere. Just give a file name
+and (if the file has been accessed at leat once in the past) the most
+frequently used file or the most recently accessed one is picked for you, no
+more entire paths to digit or folder to cd into!
 
 
 ## Installation
@@ -193,6 +193,13 @@ To toggle between `consider extension` and `ignore extensions` mode.
 See also the [g:ozzy_ignore_ext](#ozzy_ignore_ext) option.     
 
 
+## mappings
+
+**&lt;C-o&gt;**  
+This is a command line mapping used for command line completions.   
+See also [g:ozzy_cmdline_completion_map](#ozzy_cmdline_completion_map)
+
+
 ## Settings
 
 <a name="ozzy_mode" />
@@ -292,12 +299,21 @@ commands shortcuts with their respective 'long version':
 *default:* 1
 
 
+<a name="ozzy_cmdline_completion_map" />
+**g:ozzy_cmdline_completion_map**     
+
+This is the mapping used for command line completion.
+
+*default:* '&lt;C-o&gt;'  
+
+
 **g:ozzy_most_frequent_flag**                       
 
 This option represent the flag returned by the `OzzyModeFlag()` function when the 
 current mode is set to `most_frequent`. 
 
 *default:* 'F'
+
 
 **g:ozzy_most_recent_flag**                         
 
@@ -306,12 +322,14 @@ current mode is set to `most_recent`.
 
 *default:* 'R'
 
+
 **g:ozzy_freeze_off_flag**                          
  
 This option represent the flag returned by the `OzzyFreezeFlag()` function when 
 Ozzy is not frozen.
 
 *default:* ''
+
 
 **g:ozzy_freeze_on_flag**                             
 
@@ -323,4 +341,5 @@ Ozzy is frozen.
 
 ## Changelog
 
-* **v0.1**: beta release
+* **v0.2**: added command line completion
+* **v0.1**: first stable release

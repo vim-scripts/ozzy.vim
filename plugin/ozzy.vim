@@ -1,11 +1,11 @@
 " ============================================================================
 " File: ozzy.vim
-" Description: Open almost any file from anywhere  
+" Description: Opens almost any file from anywhere  
 " Mantainer: Giacomo Comitti (https://github.com/gcmt)
 " Url: https://github.com/gcmt/ozzy.vim
 " License: MIT
-" Version: 0.1
-" Last Changed: 6 Oct 2012
+" Version: 0.2
+" Last Changed: 7 Oct 2012
 " ============================================================================
 
 
@@ -60,6 +60,9 @@ if !exists('g:ozzy_freeze_on_flag')
     let g:ozzy_freeze_on_flag = 'freeze'
 endif   
 
+if !exists('g:ozzy_cmdline_completion_map')
+    let g:ozzy_cmdline_completion_map = '<C-o>'
+endif  
 " }}}
 
 
@@ -85,6 +88,10 @@ PATH = os.path.join(PLUGIN_PATH, DB_NAME)
 
 Record = namedtuple('Record', 'path frequency last_access')
 buffers = []
+
+cmdline_seed = ''
+cmdline_matches = []
+cmdline_matches_index = 0
 
 try:
     db = shelve.open(PATH, writeback=True)
@@ -259,14 +266,6 @@ def _print_current_extension_status():
         echom('Ozzy: consider extensions')
 # }}}
 
-# _inspector_exists {{{
-def _inspector_exists():
-    if vim.eval("buflisted('%s')" % inspector.name) == '0':
-        return False
-    else:
-        return True
-# }}}
-
 # _save_inspector_cursor_pos {{{
 def _save_inspector_cursor_pos():
     global inspector
@@ -276,29 +275,27 @@ def _save_inspector_cursor_pos():
         inspector.last_path_under_cursor = inspector.mapper[line]
 # }}}
 
+# _inspector_is_current_buffer {{{
+def _inspector_is_current_buffer():
+    bufname = vim.current.buffer.name
+    if bufname and bufname.endswith(inspector.name):
+        return True
+    else:
+        return False
+# }}}
+
 # _update_inspector {{{        
 def _update_inspector(func):
     def wrapper(*args, **kwargs):
         _save_inspector_cursor_pos()
-        func()
+        func(*args, **kwargs)
+        if not _inspector_is_current_buffer():
+            return
         OzzyInspect()       
         _insert_line_indicator()
 
     return wrapper   
 # }}}  
-
-# _update_inspector_if_exists RETHINK?? {{{
-def _update_inspector_if_exists(func):
-    def wrapper(*args, **kwargs):
-        _save_inspector_cursor_pos()
-        func()
-        if not _inspector_exists():
-            return
-        OzzyInspect()       
-        _insert_line_indicator()
-
-    return wrapper
-# }}}
 
 # echom {{{
 def echom(msg):
@@ -312,7 +309,7 @@ def echom(msg):
 def OzzyOpen(target):
     """Open the given file according to the current mode"""
 
-    matches = _find_matches(target, db.values())
+    matches = _find_matches(target.strip(), db.values())
     
     if ozzy_mode == 'most_frequent':
         record = _most_frequent_path(matches)
@@ -326,6 +323,7 @@ def OzzyOpen(target):
 # }}}
 
 # OzzyRemove {{{
+@_update_inspector
 def OzzyRemove(target):
     """To remove records from the database according to the given pattern."""
 
@@ -351,6 +349,7 @@ def OzzyRemove(target):
 # }}}
 
 # OzzyKeepLast {{{
+@_update_inspector
 def OzzyKeepLast(args):  
     """Remove all records older than the given weeks/days/hours/minutes."""
 
@@ -382,6 +381,7 @@ def OzzyKeepLast(args):
 # }}}
 
 # OzzyReset {{{
+@_update_inspector
 def OzzyReset():
     """To clear the entire database."""
 
@@ -427,7 +427,7 @@ def OzzyInspect(order_by=None, reverse_order=None, show_help=None,
 # }}}
 
 # ToggleMode {{{
-@_update_inspector_if_exists
+@_update_inspector
 def ToggleMode():
     global ozzy_mode
     # update inspector attribute to reflect this change when its opened
@@ -442,7 +442,7 @@ def ToggleMode():
 # }}}
 
 # ToggleFreeze {{{            
-@_update_inspector_if_exists
+@_update_inspector
 def ToggleFreeze():
     global ozzy_is_frozen
     ozzy_is_frozen = not ozzy_is_frozen
@@ -450,7 +450,7 @@ def ToggleFreeze():
 # }}}
 
 # ToggleExtension {{{              
-@_update_inspector_if_exists
+@_update_inspector
 def ToggleExtension():
     global ignore_ext
     ignore_ext = not ignore_ext
@@ -691,20 +691,16 @@ def _remove_unlisted_buffers():
             buffers.remove(b) 
 # }}}
 
-# _init_inspector_when_closed {{{
-def _init_inspector_when_closed():
-    if not _inspector_exists():
-        inspector.__init__()
-# }}}
-
 # _listed_buffers {{{
 def _listed_buffers():
     return [bufname for bnr, bufname in enumerate(vim.buffers)
             if int(vim.eval('buflisted(%d)' % (bnr + 1)))]
 # }}}
 
-# _remove_deleted_files_from_db {{{
+# _db_maintenace {{{
 def _db_maintenance():
+    """Remove deleted files or files not recently opened (see ozzy_keep)"""
+       
     for r in db.values():
         cond1 = not os.path.exists(r.path)
         cond2 = (ozzy_keep and (dt.now() - r.last_access > 
@@ -719,6 +715,48 @@ def _db_maintenance_and_closing():
     db.close()
 # }}}
 
+# command line completion
+# ============================================================================
+
+# _find_cmdline_matches {{{
+def _find_cmdline_matches(target):
+
+    def get_non_empty(l1, l2):
+        if l1:
+            return l1
+        if l2:
+            return l2
+        return []
+
+    attr = ('frequency' if ozzy_mode == 'most_frequent' 
+              else 'last_access')
+
+    records = sorted(db.values(), key=attrgetter(attr), reverse=True)
+
+    matches_path = [path[path.find(target):] for path, _, _ in records 
+                    if target in os.path.split(path)[0]]
+
+    matches_fname = []  
+    for path, _, _ in records:
+        fname = os.path.split(path)[1]
+        if fname not in matches_fname and fname.startswith(target):
+            matches_fname.append(fname)
+
+    if target.startswith('/'):
+        return get_non_empty(matches_path, matches_fname)
+    else:
+        return get_non_empty(matches_fname, matches_path)
+# }}}
+
+# _init_cmdline_matches {{{
+def _init_cmdline_matches():
+    global cmdline_matches
+    global cmdline_matches_index
+
+    cmdline_matches = []
+    cmdline_matches_index = 0
+# }}}
+
 # debug utils
 # ============================================================================
 
@@ -729,6 +767,48 @@ def print_mapper():
 
 END
 
+
+" _ozzy_cmdline_completion {{{
+function! _ozzy_cmdline_completion()
+python << END
+
+global cmdline_matches
+global cmdline_matches_index
+global cmdline_seed
+
+cmdline_original = vim.eval('getcmdline()')
+cmdline_tokens = cmdline_original.split(' ', 1)
+
+if len(cmdline_tokens) == 2 and cmdline_tokens[0] in ['Ozzy', 'O']:
+    command, arg = cmdline_tokens
+
+    if cmdline_seed == '' or not arg.startswith(cmdline_seed):
+        _init_cmdline_matches()
+        cmdline_seed = arg
+
+    if not cmdline_matches:
+        cmdline_matches = _find_cmdline_matches(cmdline_seed) 
+
+    if cmdline_matches and cmdline_matches_index < len(cmdline_matches):
+        cmdline_next_match = cmdline_matches[cmdline_matches_index]
+        if cmdline_matches_index + 1 == len(cmdline_matches):
+            cmdline_matches_index = 0
+        else:
+            cmdline_matches_index += 1
+    
+    elif not cmdline_matches:
+        cmdline_next_match = arg   
+    
+    cmdline = command + ' ' + cmdline_next_match
+    vim.eval('setcmdpos(strlen("%s")+1)' % cmdline)
+
+    vim.command('let s:cmdline = "%s"' % cmdline)
+else:
+    vim.command('let s:cmdline = "%s"' % cmdline_original)
+END
+    return s:cmdline
+endfunction
+" }}}
 
 " functions to get ozzy status {{{
 " useful to display the Ozzy status on the status bar
@@ -764,7 +844,7 @@ augroup ozzy_plugin
     au!
     au CursorMoved * python _insert_line_indicator()
     au BufEnter * python _remove_unlisted_buffers()
-    au BufEnter * python _init_inspector_when_closed()
+    au BufRead * python _init_cmdline_matches()
     au BufReadPost * python _update_buffer()
     au VimLeave * python _db_maintenance_and_closing()
 augroup END 
@@ -791,5 +871,12 @@ if g:ozzy_enable_shortcuts
     command! -nargs=1 Orm python OzzyRemove(<q-args>)
     command! -nargs=+ Okeep python OzzyKeepLast(<q-args>)
 endif       
+
+" }}}
+
+" mappings {{{
+" ========================================================= 
+
+exec 'cnoremap ' g:ozzy_cmdline_completion_map . ' <C-\>e_ozzy_cmdline_completion()<CR>'
 
 " }}}
