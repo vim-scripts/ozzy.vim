@@ -2,23 +2,28 @@ This is a mirror of http://www.vim.org/scripts/script.php?script_id=4256
 
 
 Ozzy is very straightforward to use. Once installed, you can start editing your
-favourite files as always. Once you open a file, Ozzy registers it in its database 
-and from then you can easily open that file wherever you are with the following 
-command:
+favourite files as always. Once you open a file Ozzy registers it and from then
+you can open that file with the following command:
 
     :Ozzy <file name>
 
-Every time you open a file that has been already registered, Ozzy keeps track of
-some additional information such as the last access time and how many times that file has 
-been opened. If Ozzy has in its database only one file that matches the given <file name> 
-then that file is opened. If Ozzy finds more that one match in its database, it has to 
-decide what is the right file to open. By default Ozzy opens the most frequently used 
-file but you can change this behavior to open the most recently used file. 
-Suppose now that Ozzy has in its database a lot of files with the same name such as 
-'README' files. If opening the most frequently or recently used 'README' does 
-not fit your needs you can still specify a partial path of the file you want to open:
+If Ozzy has in its database only one file that match the given <file name>, 
+then that file is opened. If Ozzy find more that one match in its database, 
+it has to decide what is the right file to open. By default Ozzy opens the most
+frquently used file but you can change this behaviour to open the most recently 
+used file, or even the file closest to the current working directory (context mode).
+If you want to open a file regardless its frequency, access time or the current context,
+you can specify a partial path:
 
     :Ozzy <partial path>/<file name>
+
+But what if you want to open a bunch of files at the same time? Well, if you
+end the `<file name>` with a forward slash `/`, Ozzy will interpret it as
+a directory and it will open all files contained into it (not recursively and
+only those files that Ozzy has in its database will be opened).
+
+If the filename is long or you don't remember part of it you can use command
+line completion using the <TAB> key to cycle through possible matches. 
 
 
 Other powerful commands are:

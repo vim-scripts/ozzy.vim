@@ -5,29 +5,31 @@
 
                                      ~
                               Reference Manual
-                                   v.0.2
+                                   v.0.3
 
 ==============================================================================
 CONTENTS                                                       *ozzy-contents*
 
-    1. Overview .............................. |ozzy-overview|
-    2. Usage ................................. |ozzy-usage|
-    3. Modes ................................. |ozzy-modes|
-    4. Freeze Ozzy ........................... |ozzy-freeze|
-    5. Inspector ............................. |ozzy-inspector|
-    6. Commands .............................. |ozzy-commands|
-    7. Mappings .............................. |ozzy-mappings|
-    8. Settings .............................. |ozzy-settings|
-    9. Credits ............................... |ozzy-credits|
+     1. Overview .............................. |ozzy-overview|
+     2. Usage ................................. |ozzy-usage|
+     3. Modes ................................. |ozzy-modes|
+     4. Freeze Ozzy ........................... |ozzy-freeze|
+     5. Inspector ............................. |ozzy-inspector|
+     6. Commands .............................. |ozzy-commands|
+     7. Mappings .............................. |ozzy-mappings|
+     8. Settings .............................. |ozzy-settings|
+     9. Changelog ............................. |ozzy-changelog|
+    10. License ............................... |ozzy-license|
+    11. Credits ............................... |ozzy-credits|
 
 
 ==============================================================================
 1. Overview                                                    *ozzy-overview*
 
-Ozzy allows you to open frequently or recently used files from anywhere. Just
-give a file name and (if the file has been accessed at leat once in the past)
-the most frequently used file or the most recently accessed one is picked for 
-you, no more entire paths to digit or folder to cd into! 
+Ozzy allows you to open almost any file from anywhere. Just give a file name
+and (if the file has been accessed at leat once in the past) the most
+frequently used file or the most recently accessed one is picked for you, no
+more entire paths to digit or folder to cd into! 
 
 
 ==============================================================================
@@ -35,20 +37,29 @@ you, no more entire paths to digit or folder to cd into!
 
 Ozzy is very straightforward to use. Once installed, you can start editing your
 favourite files as always. Once you open a file Ozzy registers it and from then
-you can open that file with the following command:
+you can open that file with the following command: 
 
     :Ozzy <file name>
 
-If Ozzy has in its database only one file that match the given '<file name>', 
+If Ozzy has in its database only one file that match the given `<file name>`, 
 then that file is opened. If Ozzy find more that one match in its database, 
 it has to decide what is the right file to open. By default Ozzy opens the most
 frquently used file but you can change this behaviour to open the most recently 
 used file. 
-Suppose now Ozzy has in its database a lot of files with the same name such as README
-files. If opening the most frequently or recently used 'README' does not fit your
-needs you can still specify a partial path of tha file you want to open:
+Suppose now Ozzy has in its database a lot of files with the same name such as `README`
+files. If opening the most frequently or recently used `README` does not fit your
+needs you can still specify a partial path of tha file you want to open: 
 
     :Ozzy <partial path>/<file name>
+
+But what if you want to open a bunch of files at the same time? Well, if you
+end the `<file name>` with a forward slash `/`, Ozzy will interpret it as
+a directory and it will open all files contained into it (only those files that
+Ozzy has in its database).
+
+
+If the filename is long or you don't remember part of it you can use command
+line completion using the `<C-o>` mapping to cycle through possible matches.   
 
 
 ==============================================================================
@@ -71,7 +82,7 @@ by setting the |g:ozzy_mode| option.
 4. Freeze Ozzy                                                   *ozzy-freeze*
 
 When Ozzy is frozen it does not update its database every time you open a file.
-Though, you can still use all of the Ozzy commands. If you want to freeze Ozzy
+Though, you can still use all the Ozzy commands. If you want to freeze Ozzy
 for a long period of time you can set the |g:ozzy_freeze| option in your .vimrc
 file. If you want to freeze Ozzy for a brief period you can toggle on and off 
 this option using the |OzzyToggleFreeze| command during a vim session.
@@ -115,8 +126,17 @@ and their relative actions:
 Ozzy <file name>
 shortcut: O
 
-If Ozzy has in its database a file that match the given <file name>, then it is
-opened. See |ozzy-modes| to find out how to change the behaviour of this
+If Ozzy has in its database a file that match the given `<file name>`, then it
+is opened. If you ends <file name> with a forward slash `/` Ozzy will interpret
+the argument as a directory and it will open all the files in that direcory
+according to the |g:ozzy_max_num_of_files_to_open|
+option. In fact, if there more files, only the most recently or frequently
+accessed (according to g:ozzy_mode) will be opened. Note however that Ozzy does
+not really inspect the real directory on the file system to scan for files, but
+instead, it will search exclusively in its database for matches.  You have to
+open files at leat once 'manually' before Ozzy can open them for you.  
+
+See |ozzy-modes| to find out how to change the behaviour of this
 command when there are two or more files that match the given <file name>.
 
 
@@ -180,6 +200,8 @@ There are shortcuts for specifying minutes, hours, days, and weeks:
     - hours: h, hour, hours
     - days: d, day, days
     - weeks: w, week, weeks
+
+See also the |g:ozzy_keep| option.  
 
 
 ------------------------------------------------------------------------------
@@ -363,7 +385,28 @@ default: 'freeze'
 
 
 ==============================================================================
-9. Credits                                                      *ozzy-credits*
+9. Changelog                                                  *ozzy-changelog*
+
+    * v0.3: 
+        - added ability to open multiple files at once
+        - fixed bugs
+
+    * v0.2:
+        - added command line completion
+        - fixed bugs
+
+    * v0.1: 
+        - first stable release 
+
+
+==============================================================================
+10. License                                                     *ozzy-license*
+
+Ozzy is MIT licensed.
+
+
+==============================================================================
+11. Credits                                                     *ozzy-credits*
 
 Developed by Giacomo Comitti
 

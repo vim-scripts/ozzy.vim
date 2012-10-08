@@ -1,6 +1,6 @@
 # Ozzy.vim
 
-**v0.2**
+**v0.3**
 
 
 Ozzy allows you to open almost any file from anywhere. Just give a file name
@@ -42,6 +42,15 @@ needs you can still specify a partial path of tha file you want to open:
 :Ozzy <partial path>/<file name>
 ```
 
+But what if you want to open a bunch of files at the same time? Well, if you
+end the `<file name>` with a forward slash `/`, Ozzy will interpret it as
+a directory and it will open all files contained into it (only those files that
+Ozzy has in its database).
+
+
+If the filename is long or you don't remember part of it you can use command
+line completion using the `<C-o>` mapping to cycle through possible matches.
+
 
 <a name="ozzy-modes" />
 ## Modes
@@ -62,7 +71,7 @@ by setting the [g:ozzy_mode](#ozzy_mode) option.
 ## Freeze ozzy
  
 When Ozzy is frozen it does not update its database every time you open a file.
-Though, you can still use all of the Ozzy commands. If you want to freeze Ozzy
+Though, you can still use all the Ozzy commands. If you want to freeze Ozzy
 for a long period of time you can set the [g:ozzy_freeze](#ozzy_freeze) option in your .vimrc
 file. If you want to freeze Ozzy for a brief period you can toggle on and off 
 this option using the [OzzyToggleFreeze](#ozzy-toggle-freeze) command during a vim session.
@@ -102,19 +111,34 @@ and their relative actions:
 
 ## Commands
 
+
 **Ozzy &lt;file name&gt;**  
 shortcut: O
 
-If Ozzy has in its database a file that match the given `<file name>`, then it is
-opened. See [Modes](#ozzy-modes) to find out how to change the behaviour of this
+If Ozzy has in its database a file that match the given `<file name>`, then it
+is opened. If you ends <file name> with a forward slash `/` Ozzy will interpret
+the argument as a directory and it will open all the files in that direcory
+according to the [g:ozzy_max_num_of_files_to_open](#max_num_of_files_to_open)
+option. In fact, if there more files, only the most recently or frequently
+accessed (according to g:ozzy_mode) will be opened. Note however that Ozzy does
+not really inspect the real directory on the file system to scan for files, but
+instead, it will search exclusively in its database for matches.  You have to
+open files at leat once 'manually' before Ozzy can open them for you.
+
+See [Modes](#ozzy-modes) to find out how to change the behaviour of this
 command when there are two or more files that match the given `<file name>`.
 
+
+
+-------------------------------------------------------------------------------
 **OzzyInspect**                                                        
 shortcut: Oi
 
 Open the database inspector.    
 See also [Inspector](#ozzy-inspector).
 
+
+-------------------------------------------------------------------------------
 **OzzyRemove &lt;pattern&gt;**                                           
 shortcut: Orm
 
@@ -143,6 +167,7 @@ all file paths that contains `<path>/`.
 examples: `/doc/` (every file in a folder called 'doc')    
 
 
+-------------------------------------------------------------------------------
 **OzzyKeepLast &lt;time period&gt;**                                  
 shortcut: Okeep
 
@@ -168,11 +193,13 @@ There are shortcuts for specifying minutes, hours, days, and weeks:
 See also the [g:ozzy_keep](#ozzy_keep) option.
 
 
+-------------------------------------------------------------------------------
 **OzzyReset**                                                   
 
 To remove all files entries from the database.
 
 
+-------------------------------------------------------------------------------
 <a name="ozzy-toggle-mode" />
 **OzzyToggleMode**                                            
 
@@ -180,6 +207,7 @@ To toggle between `most frequent` and `most recent` modes.
 See also [Modes](#ozzy-modes) and the [g:ozzy_mode+(#ozzy-mode) option. 
 
 
+-------------------------------------------------------------------------------
 <a name="ozzy-toggle-freeze" />
 **OzzyToggleFreeze**                                        
 
@@ -187,6 +215,7 @@ To toggle between `freeze on` and `freeze off` modes.
 See also [Ozzy freeze](#ozzy-freeze) and the [g:ozzy_freeze](#ozzy_freeze) option. 
 
 
+-------------------------------------------------------------------------------
 **OzzyToggleExtension**                                   
 
 To toggle between `consider extension` and `ignore extensions` mode.    
@@ -195,12 +224,14 @@ See also the [g:ozzy_ignore_ext](#ozzy_ignore_ext) option.
 
 ## mappings
 
+
 **&lt;C-o&gt;**  
 This is a command line mapping used for command line completions.   
 See also [g:ozzy_cmdline_completion_map](#ozzy_cmdline_completion_map)
 
 
 ## Settings
+
 
 <a name="ozzy_mode" />
 **g:ozzy_mode**                                                    
@@ -214,7 +245,7 @@ Below all the available modes:
 *default:* 'most_frequent'
 
 
-
+-------------------------------------------------------------------------------
 <a name="ozzy_freeze" />
 **g:ozzy_freeze**                                              
 
@@ -226,6 +257,7 @@ with the *OzzyToggleFreeze* command.
 *default:* 0
 
 
+-------------------------------------------------------------------------------
 <a name="ozzy_ignore_ext" />
 **g:ozzy_ignore_ext**                                        
 
@@ -241,6 +273,7 @@ specify the extnsion if you want.
 *default:* 1
 
 
+-------------------------------------------------------------------------------
 <a name="ozzy_ignore" />
 **g:ozzy_ignore**                                             
 
@@ -272,6 +305,8 @@ examples: `/doc/` (every file in a folder called 'doc')
 *default:* []
 
 
+-------------------------------------------------------------------------------
+<a name="ozzy_keep" />
 **g:ozzy_keep**                                       
 
 This option can be set to a number n >= 0 where n represent a number of days.
@@ -286,6 +321,7 @@ example:
 *default:* 0
 
 
+-------------------------------------------------------------------------------
 **g:ozzy_enable_shortcuts**                           
 
 If set to 1, this option enables the commands shortcut. Below all the available 
@@ -299,6 +335,7 @@ commands shortcuts with their respective 'long version':
 *default:* 1
 
 
+-------------------------------------------------------------------------------
 <a name="ozzy_cmdline_completion_map" />
 **g:ozzy_cmdline_completion_map**     
 
@@ -306,7 +343,16 @@ This is the mapping used for command line completion.
 
 *default:* '&lt;C-o&gt;'  
 
+-------------------------------------------------------------------------------
+<a name="ozzy_max_num_files_to_open" />
+**g:ozzy_max_num_files_to_open**     
 
+The max number of files that can be opened when you use the *open multiple files*
+feature. See the |OzzyOpen| command.
+
+*default:* 10   
+
+-------------------------------------------------------------------------------
 **g:ozzy_most_frequent_flag**                       
 
 This option represent the flag returned by the `OzzyModeFlag()` function when the 
@@ -315,6 +361,7 @@ current mode is set to `most_frequent`.
 *default:* 'F'
 
 
+-------------------------------------------------------------------------------
 **g:ozzy_most_recent_flag**                         
 
 This option represent the flag returned by the `OzzyModeFlag()` function when the 
@@ -323,6 +370,7 @@ current mode is set to `most_recent`.
 *default:* 'R'
 
 
+-------------------------------------------------------------------------------
 **g:ozzy_freeze_off_flag**                          
  
 This option represent the flag returned by the `OzzyFreezeFlag()` function when 
@@ -331,6 +379,7 @@ Ozzy is not frozen.
 *default:* ''
 
 
+-------------------------------------------------------------------------------
 **g:ozzy_freeze_on_flag**                             
 
 This option represent the flag returned by the `OzzyFreezeFlag()` function when 
@@ -341,5 +390,16 @@ Ozzy is frozen.
 
 ## Changelog
 
-* **v0.2**: added command line completion
-* **v0.1**: first stable release
+* v0.3: 
+
+    - added ability to open multiple files at once
+    - fixed bugs
+
+* v0.2:
+
+    - added command line completion
+    - fixed bugs
+
+* v0.1: 
+
+    - first stable release   
