@@ -4,8 +4,8 @@
 " Mantainer: Giacomo Comitti (https://github.com/gcmt)
 " Url: https://github.com/gcmt/ozzy.vim
 " License: MIT
-" Version: 0.3
-" Last Changed: 8 Oct 2012
+" Version: 0.4
+" Last Changed: 11 Oct 2012
 " ============================================================================
 
 
@@ -44,36 +44,36 @@ if !exists('g:ozzy_enable_shortcuts')
     let g:ozzy_enable_shortcuts = 1
 endif    
 
+if !exists('g:ozzy_max_num_files_to_open')
+    let g:ozzy_max_num_files_to_open = 0
+endif      
+
 if !exists('g:ozzy_most_frequent_flag')
     let g:ozzy_most_frequent_flag = 'F'
 endif 
 
 if !exists('g:ozzy_most_recent_flag')
-    let g:ozzy_most_recent_flag = 'R'
+    let g:ozzy_most_recent_flag = 'T'
 endif  
 
+if !exists('g:ozzy_context_flag')
+    let g:ozzy_context_flag = 'C'
+endif       
+
 if !exists('g:ozzy_freeze_off_flag')
-    let g:ozzy_freeze_off_flag = ''
+    let g:ozzy_freeze_off_flag = 'off'
 endif 
 
 if !exists('g:ozzy_freeze_on_flag')
-    let g:ozzy_freeze_on_flag = 'freeze'
+    let g:ozzy_freeze_on_flag = 'on'
 endif   
-
-if !exists('g:ozzy_cmdline_completion_map')
-    let g:ozzy_cmdline_completion_map = '<C-o>'
-endif  
-
- if !exists('g:ozzy_max_num_files_to_open')
-    let g:ozzy_max_num_files_to_open = 10
-endif  
 
 " }}}
 
 
 python << END
 
-# ozzy init {{{                   
+# ozzy init {{{                      
 # ============================================================================
 
 # -*- coding: utf-8 -*-
@@ -84,7 +84,7 @@ import shelve
 import datetime
 from datetime import datetime as dt
 from collections import namedtuple
-from operator import attrgetter
+from operator import attrgetter, itemgetter
 from heapq import nlargest
 
 
@@ -97,19 +97,17 @@ PATH = os.path.join(PLUGIN_PATH, DB_NAME)
 Record = namedtuple('Record', 'path frequency last_access')
 
 # current opened buffers
-buffers = []
+buffers = [] 
 
-# command line completion state variables
-cmdline_seed = ''
-cmdline_matches = []
-cmdline_matches_index = 0
+# modes
+MODES = ['most_frequent', 'most_recent', 'context']
 
 try:
     db = shelve.open(PATH, writeback=True)
 except:
     db = {}
-    vim.command('echom "ozzy log: cannot create the database into ' + 
-                '' + PATH + '"')
+    msg = 'ozzy log: cannot create the database into ' + PATH
+    vim.command('echom "%s"' % msg)
 # }}}
 
 # settings management {{{      
@@ -147,14 +145,16 @@ def setting(name, fmt=None):
 
 # }}}
 
-# check settings validity  FIXME {{{                   
+# check settings validity {{{                    
 # ===================================================================
 
-if any((setting('mode') not in ['most_frequent', 'most_recent'],
-       setting('max_num_files_to_open', fmt=int) <= 0,
+if any((setting('mode') not in MODES,
+       setting('max_num_files_to_open', fmt=int) < 0,
        setting('keep', fmt=int) < 0,
     )):
-    vim.command('echom "ozzy log: some setting has not been setted properly"')
+    msg = ("ozzy log: some setting has not been setted properly. "
+           "Something may not work as expected.")
+    vim.command('echom "%s"' % msg)
 
 # }}}
 
@@ -201,7 +201,7 @@ def _update_buffer(bufname=None):
     if bufname is None:
         bufname = vim.current.buffer.name
 
-    _cond = not _match_ignore_patterns(bufname, setting('ignore')) 
+    _cond = not _match_ignore_patterns(bufname) 
     if _cond and bufname not in buffers:
         if bufname in db:
             db[bufname] = Record(bufname, db[bufname].frequency + 1, dt.now())
@@ -214,16 +214,69 @@ def _update_buffer(bufname=None):
 # helper functions
 # ============================================================================
 
-# _find_matches {{{
-def _find_matches(target, records):
+# _find_fname_match {{{                    
+def _find_fname_match(target):
     matches = []
-    for r in records:
-        cond1 = r.path.endswith(target) 
+    for r in db.values():
+        fname = os.path.split(r.path)[1]
+        fname_no_ext = os.path.splitext(fname)[0]
+        cond1 = target == fname 
+        cond2 = setting('ignore_ext', fmt=bool) and fname_no_ext == target
+        if cond1 or cond2:
+            matches.append(r)
+    return matches        
+# }}}
+
+ # _find_path_match {{{                    
+def _find_path_match(target):
+    matches = []
+    for r in db.values():
         path_no_ext = os.path.splitext(r.path)[0]
+        cond1 = r.path.endswith(target)
         cond2 = setting('ignore_ext', fmt=bool) and path_no_ext.endswith(target)
         if cond1 or cond2:
             matches.append(r)
     return matches        
+# }}}        
+
+# _find_path_endswith {{{
+def _find_path_endswith(target):
+    return [record for record in db.values()
+            if os.path.split(record.path)[0].endswith(target[:-1])] 
+# }}} 
+
+# _find_path_contains {{{
+def _find_path_contains(target):
+    target = target.strip('/')
+    return [path for path, _, _ in records 
+            if '/' + target in os.path.split(path)[0]]
+# }}}               
+
+# _find_matches_distance {{{             
+def _find_matches_distance(target): 
+    """Returns all matches and their relative distance to cwd"""
+
+    matches = _find_fname_match(target.strip())        
+
+    cwd = vim.eval('getcwd()')
+    r = []     
+
+    for match in matches:
+        if match.path.startswith(cwd):            
+            p = match.path[len(cwd):]  # remove cwd from path
+            # get the number of directories between cwd and the the file
+            r.append((match, len(p.split('/')[1:-1])))
+        else:
+            cwd_lst = cwd.strip('/').split('/')
+            path_lst = match.path.strip('/').split('/')[:-1]
+            for f1, f2 in zip(cwd_lst, path_lst):
+                if f1 == f2:
+                    cwd_lst.remove(f1)
+                    path_lst.remove(f1)
+
+            r.append((match, len(cwd_lst) + len(path_lst)))
+
+    return r
 # }}}
 
 # _remove_from_db_if {{{         
@@ -236,9 +289,9 @@ def _remove_from_db_if(func, getter):
     return nremoved    
 # }}}
 
-# _match_ignore_patters {{{   
-def _match_ignore_patterns(target, patterns):
-    for patt in patterns:
+# _match_ignore_patterns {{{                
+def _match_ignore_patterns(target):
+    for patt in setting('ignore'):
         if patt.startswith('*.'):
             if target.endswith(patt[1:]):
                 return True
@@ -256,10 +309,7 @@ def _match_ignore_patterns(target, patterns):
 
 # _print_current_mode {{{                
 def _print_current_mode():
-    if setting('mode') == 'most_frequent':
-        echom('Ozzy: most_frequent on')
-    else:
-        echom('Ozzy: most_recent on')
+    echom('Ozzy: mode %s' % setting('mode'))
 # }}}
 
 # _print_current_freeze_status {{{                
@@ -296,7 +346,7 @@ def _inspector_is_current_buffer():
         return False
 # }}}
 
-# _update_inspector {{{                
+# _update_inspector {{{               
 def _update_inspector(func):
     def wrapper(*args, **kwargs):
         _save_inspector_cursor_pos()
@@ -309,6 +359,19 @@ def _update_inspector(func):
     return wrapper   
 # }}}  
 
+# _sync_db {{{
+def _sync_db(func):
+    def wrapper(*args, **kwargs):
+        func()
+        db.sync()
+    return wrapper
+# }}}
+
+# _escape_spaces {{{
+def _escape_spaces(s):
+    return s.replace(' ', '\ ')    
+# }}}
+
 # echom {{{                     
 def echom(msg):
     vim.command('echom "%s"' % msg)
@@ -317,43 +380,62 @@ def echom(msg):
 # interface functions
 # ============================================================================
 
-# OzzyOpen {{{                 
+# OzzyOpen {{{                       
 def OzzyOpen(target):
     """Open the given file according to the current mode.
     
        If a directory name is given, all files in that direcotory are opened.
     """
 
-    attr = ('frequency' if setting('mode') == 'most_frequent' 
+    target = target.strip()
+
+    attr = ('frequency' if setting('mode') in ['most_frequent', 'context'] 
             else 'last_access')
 
     if target.endswith('/'): 
         # open all files in the given directory
 
-        matches = [record for record in db.values()
-                   if os.path.split(record.path)[0].endswith(target[:-1])]
+        matches = _find_path_endswith(target)
         
-        paths = [r.path for r in 
-                 nlargest(setting('max_num_files_to_open', fmt=int), matches, 
-                          key=attrgetter(attr))]
+        n = setting('max_num_files_to_open', fmt=int)
+        if n > 0:
+            paths = [r.path for r in nlargest(n, matches, key=attrgetter(attr))]
+        else:
+            paths =  [r.path for r in matches]
 
         if matches:
-            vim.command("args " + ' '.join(paths))
+            vim.command("args " + ' '.join(_escape_spaces(p) for p in paths))
             echom('Ozzy: %d files opened' % len(paths))
         else:
-            echom('Ozzy: No directory found')
+            echom('Ozzy: No file found')
 
     else: 
         # open a single file
 
-        matches = _find_matches(target.strip(), db.values())        
+        if '/' in target:
+            matches = _find_path_match(target)
+
+        elif setting('mode') == 'context':
+            # sort matches by distance: the closests first
+            _matches = sorted(_find_matches_distance(target), 
+                              key=lambda t: t[1])
+            if _matches:
+                minim = _matches[0][1]  # get the distance of the fist match
+                # sort closests matches by frequency: most accessed first
+                match = max([match for match, n in _matches if n == minim],
+                            key=attrgetter(attr))
+
+                vim.command("e " + _escape_spaces(match.path))
+            else:
+                echom('Ozzy: No file found') 
+            return
+
+        else:
+            matches = _find_fname_match(target)  
+
         if matches:
             record = max(matches, key=attrgetter(attr))
-        else:
-            record = None
-
-        if record:
-            vim.command("e %s" % record.path)
+            vim.command("e %s" % _escape_spaces(record.path))
         else:
             echom('Ozzy: No file found')   
 # }}}
@@ -436,7 +518,7 @@ def OzzyReset():
         echom('Ozzy: database untouched!')
 # }}}
 
-# OzzyInspect {{{                   
+# OzzyInspect {{{                    
 def OzzyInspect(order_by=None, reverse_order=None, show_help=None,
                 short_paths=None):
     """Open the database inpsector."""
@@ -454,6 +536,10 @@ def OzzyInspect(order_by=None, reverse_order=None, show_help=None,
         inspector.short_paths = short_paths
 
     vim.command("e %s" % inspector.name)
+
+    if vim.eval('&cursorline') != '0':
+        vim.command("setlocal cursorline")
+
     vim.command("setlocal buftype=nofile")
     vim.command("setlocal bufhidden=wipe")
     vim.command("setlocal encoding=utf-8")
@@ -473,12 +559,14 @@ def OzzyInspect(order_by=None, reverse_order=None, show_help=None,
 def ToggleMode():
     # update inspector attribute to reflect this change when its opened
     global inspector
-    if setting('mode') == 'most_frequent':
-        let('mode', value='most_recent')    
-        inspector.order_by = 'last_access' 
+    curr_index = MODES.index(setting('mode'))
+    if curr_index == len(MODES) - 1:
+        next_mode = MODES[0]
     else:
-        let('mode', value='most_frequent')
-        inspector.order_by = 'frequency' 
+        next_mode = MODES[curr_index + 1]
+    let('mode', next_mode)
+    inspector.order_by = ('frequency' if setting('mode') == 'most_frequent' 
+                          else 'last_access')  
     _print_current_mode()
 # }}}
 
@@ -680,6 +768,7 @@ def _delete_selected_records():
 # }}}
 
 # _touch_record_curr_line {{{
+@_sync_db
 @_update_inspector
 def _touch_record_curr_line():
     """Set the last access time of the file on the current line to now.
@@ -693,6 +782,7 @@ def _touch_record_curr_line():
 # }}}
 
 # _increment_freq_record_curr_line {{{             
+@_sync_db
 @_update_inspector
 def _increment_freq_record_curr_line():
     """Increment the frequency attribute of the file on the current line.
@@ -706,6 +796,7 @@ def _increment_freq_record_curr_line():
 # }}}
 
 # _decrement_freq_record_curr_line {{{  
+@_sync_db
 @_update_inspector
 def _decrement_freq_record_curr_line():
     """Decrement the frequency attribute of the file on the current line.
@@ -727,7 +818,7 @@ def _open_record_curr_line():
     """
 
     path = _get_path_on_line(vim.current.window.cursor[0])
-    vim.command('e %s' % path)
+    vim.command('e %s' % _escape_spaces(path))
 # }}}    
  
 # _open_record_curr_line_bg {{{ 
@@ -738,7 +829,7 @@ def _open_record_curr_line_bg():
     This function is called only inside the Inspector.
     """                 
     path = _get_path_on_line(vim.current.window.cursor[0])
-    vim.command('bad %s' % path)
+    vim.command('bad %s' % _escape_spaces(path))
     _update_buffer(path)
 # }}}   
 
@@ -778,101 +869,43 @@ def _listed_buffers():
             if int(vim.eval('buflisted(%d)' % (bnr + 1)))]
 # }}}
 
-# _db_maintenace {{{
+# _db_maintenance {{{             
 def _db_maintenance():
     """Remove deleted files or files not recently opened (see g:ozzy_keep)"""
        
     for r in db.values():
         ozzy_keep = setting('keep', fmt=int)
-        cond1 = not os.path.exists(r.path)
-        cond2 = (ozzy_keep and (dt.now() - r.last_access > 
+        cond1 = not os.path.exists(r.path)  # remove non exitent files
+        cond2 = (ozzy_keep > 0 and (dt.now() - r.last_access > 
                                 datetime.timedelta(days=ozzy_keep)))
         if cond1 or cond2:
             del db[r.path]            
 # }}}
 
-# _db_maintenance_and_closing FIX?? {{{             
-def _db_maintenance_and_closing():
+# _db_maintenance_and_close {{{             
+def _db_maintenance_and_close():
     _db_maintenance()
     db.close()
 # }}}
 
-# command line completion
-# ============================================================================
-
-# _find_cmdline_matches {{{
-def _find_cmdline_matches(target):
-
-    def get_non_empty(l1, l2):
-        if l1:
-            return l1
-        if l2:
-            return l2
-        return []
-
-    attr = ('frequency' if setting('mode') == 'most_frequent' 
-              else 'last_access')
-
-    records = sorted(db.values(), key=attrgetter(attr), reverse=True)
-
-    matches_path = [path[path.find(target):] for path, _, _ in records 
-                    if target in os.path.split(path)[0]]
-
-    matches_fname = []  
-    for path, _, _ in records:
-        fname = os.path.split(path)[1]
-        if fname not in matches_fname and fname.startswith(target):
-            matches_fname.append(fname)
-
-    if target.startswith('/'):
-        return get_non_empty(matches_path, matches_fname)
-    else:
-        return get_non_empty(matches_fname, matches_path)
-# }}}
-
 END
 
-
-" _ozzy_cmdline_completion {{{
-function! _ozzy_cmdline_completion()
+" Cmdline_completion {{{          
+function! Cmdline_completion(seed, cmdline, curpos)
 python << END
+seed = vim.eval('a:seed')
 
-global cmdline_matches
-global cmdline_matches_index
-global cmdline_seed
+matches = [r for r in db.values() 
+           if os.path.split(r.path)[1].startswith(seed)]  
 
-cmdline_original = vim.eval('getcmdline()')
-cmdline_tokens = cmdline_original.split(' ', 1)
+attr = ('frequency' if setting('mode') in ['most_frequent', 'context'] 
+        else 'last_access')   
+completions = [os.path.split(r.path)[1] for r in
+                sorted(matches, key=attrgetter(attr), reverse=True)]
 
-if len(cmdline_tokens) == 2 and cmdline_tokens[0] in ['Ozzy', 'O']:
-    command, arg = cmdline_tokens
-
-    if cmdline_seed == '' or not arg.startswith(cmdline_seed):
-        cmdline_matches = []
-        cmdline_matches_index = 0
-        cmdline_seed = arg
-
-    if not cmdline_matches:
-        cmdline_matches = _find_cmdline_matches(cmdline_seed) 
-
-    if cmdline_matches and cmdline_matches_index < len(cmdline_matches):
-        cmdline_next_match = cmdline_matches[cmdline_matches_index]
-        if cmdline_matches_index + 1 == len(cmdline_matches):
-            cmdline_matches_index = 0
-        else:
-            cmdline_matches_index += 1
-    
-    elif not cmdline_matches:
-        cmdline_next_match = arg   
-    
-    cmdline = command + ' ' + cmdline_next_match
-    vim.eval('setcmdpos(strlen("%s")+1)' % cmdline)
-
-    vim.command('let s:cmdline = "%s"' % cmdline)
-else:
-    vim.command('let s:cmdline = "%s"' % cmdline_original)
+vim.command('let s:completions = %r' % list(set(completions)))
 END
-    return s:cmdline
+    return s:completions
 endfunction
 " }}}
 
@@ -882,8 +915,10 @@ endfunction
 function! OzzyModeFlag()
     if g:ozzy_mode == 'most_frequent'
         return g:ozzy_most_frequent_flag
-    else
+    elseif g:ozzy_mode == 'most_recent'
         return g:ozzy_most_recent_flag
+    else
+        return g:ozzy_context_flag
     endif
 endfunction
 
@@ -904,8 +939,8 @@ augroup ozzy_plugin
     au!
     au CursorMoved * python _insert_line_indicator()
     au BufEnter * python _remove_unlisted_buffers()
-    au BufReadPost * python _update_buffer()
-    au VimLeave * python _db_maintenance_and_closing()
+    au BufWrite,BufReadPost * python _update_buffer()
+    au VimLeave * python _db_maintenance_and_close()
 augroup END 
 
 " }}}
@@ -914,11 +949,11 @@ augroup END
 " ========================================================= 
 
 command! OzzyInspect python OzzyInspect()
-command! -nargs=1 Ozzy python OzzyOpen(<q-args>)
+command! -nargs=1 -complete=customlist,Cmdline_completion Ozzy python OzzyOpen(<q-args>)
 
-command! OzzyReset python OzzyReset()
-command! -nargs=1 OzzyRemove python OzzyRemove(<q-args>)
+command! -nargs=1 -complete=customlist,Cmdline_completion OzzyRemove python OzzyRemove(<q-args>)
 command! -nargs=+ OzzyKeepLast python OzzyKeepLast(<q-args>)
+command! OzzyReset python OzzyReset()
 
 command! OzzyToggleMode python ToggleMode()
 command! OzzyToggleFreeze python ToggleFreeze()
@@ -926,16 +961,9 @@ command! OzzyToggleExtension python ToggleExtension()
 
 if g:ozzy_enable_shortcuts
     command! Oi python OzzyInspect()
-    command! -nargs=1 O python OzzyOpen(<q-args>)
-    command! -nargs=1 Orm python OzzyRemove(<q-args>)
+    command! -nargs=1 -complete=customlist,Cmdline_completion O python OzzyOpen(<q-args>)
+    command! -nargs=1 -complete=customlist,Cmdline_completion Orm python OzzyRemove(<q-args>)
     command! -nargs=+ Okeep python OzzyKeepLast(<q-args>)
 endif       
-
-" }}}
-
-" mappings {{{
-" ========================================================= 
-
-exec 'cnoremap ' g:ozzy_cmdline_completion_map . ' <C-\>e_ozzy_cmdline_completion()<CR>'
 
 " }}}

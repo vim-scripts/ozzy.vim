@@ -1,11 +1,11 @@
 *ozzy.txt* *ozzy*
 
                                     Ozzy
-                     Opens almost any file from anywhere.
+                             Open files quickly.
 
                                      ~
                               Reference Manual
-                                   v.0.3
+                                   v.0.4
 
 ==============================================================================
 CONTENTS                                                       *ozzy-contents*
@@ -45,35 +45,37 @@ If Ozzy has in its database only one file that match the given `<file name>`,
 then that file is opened. If Ozzy find more that one match in its database, 
 it has to decide what is the right file to open. By default Ozzy opens the most
 frquently used file but you can change this behaviour to open the most recently 
-used file. 
-Suppose now Ozzy has in its database a lot of files with the same name such as `README`
-files. If opening the most frequently or recently used `README` does not fit your
-needs you can still specify a partial path of tha file you want to open: 
+used file, or even the file closest to the current working directory (context mode).
+See [Modes](#ozzy-modes) for more informations.      
+If you want to open a file regardless its frequency, access time or the current
+context, you can specify a partial path:   
 
     :Ozzy <partial path>/<file name>
 
 But what if you want to open a bunch of files at the same time? Well, if you
 end the `<file name>` with a forward slash `/`, Ozzy will interpret it as
-a directory and it will open all files contained into it (only those files that
-Ozzy has in its database).
+a directory and it will open all files contained into it (not recursively and
+only those files that Ozzy has in its database will be opened).
 
 
 If the filename is long or you don't remember part of it you can use command
-line completion using the `<C-o>` mapping to cycle through possible matches.   
+line completion using the <TAB> key to cycle through possible matches.   
 
 
 ==============================================================================
 3. Modes                                                          *ozzy-modes*
 
 A mode determines how Ozzy chooses the right file to open when it is faced with
-a buch of file paths in its database that match the file  the user want to 
-open. There are mainly two modes available: 
+a buch of file in its database that match the file the user want to 
+open. There are three modes available: 
 
     * 'most frequent': the most frequently used file is opened.
 
     * 'most recent': the most recently used file is opened.
 
-The default mode is 'most frequent' but you can toggle between the two modes 
+    * 'context': the file closest the current working directory is opened.
+
+The default mode is 'most frequent' but you can toggle between the three modes 
 during a vim session with the |OzzyToggleMode| command or set the default mode 
 by setting the |g:ozzy_mode| option.
 
@@ -133,10 +135,10 @@ according to the |g:ozzy_max_num_of_files_to_open|
 option. In fact, if there more files, only the most recently or frequently
 accessed (according to g:ozzy_mode) will be opened. Note however that Ozzy does
 not really inspect the real directory on the file system to scan for files, but
-instead, it will search exclusively in its database for matches.  You have to
+instead, it will search exclusively in its database for matches. You have to
 open files at leat once 'manually' before Ozzy can open them for you.  
 
-See |ozzy-modes| to find out how to change the behaviour of this
+See also |ozzy-modes| to find out how to change the behaviour of this
 command when there are two or more files that match the given <file name>.
 
 
@@ -221,21 +223,14 @@ See |ozzy-modes| and |g:ozzy_mode|.
 OzzyToggleFreeze                                            *OzzyToggleFreeze*
 
 To toggle between 'freeze on' and 'freeze off' modes.
-See |ozzy-freeze| and |g:ozzy_freeze|. 
+See also |ozzy-freeze| and |g:ozzy_freeze|. 
 
 
 ------------------------------------------------------------------------------
 OzzyToggleExtension                                      *OzzyToggleExtension*
 
 To toggle between 'consider extension' and 'ignore extensions' mode.
-See |g:ozzy_ignore_ext|.
-
-==============================================================================
-7. Mappings                                                    *ozzy-mappings*
-
-<C-o>
-This is a command line mapping used for command line completions.
-See also |g:ozzy_cmdline_completion_map|.
+See also the |g:ozzy_ignore_ext| option.
 
 
 ==============================================================================
@@ -249,6 +244,7 @@ Below all the available modes:
 
     * 'most_frequent': the most used file with the given name is opened.
     * 'most_recent': the most recently accessed file is opened.
+    * 'context': the file closest to the current working directory is opened.
 
 default: 'most_frequent'
 
@@ -326,6 +322,15 @@ example: let g:ozzy_keep = 30
 
 default: 0
 
+-------------------------------------------------------------------------------
+g:ozzy_max_num_files_to_open     
+
+The max number of files that can be opened when you open multiple files with the 
+`Ozzy` command. If this option is set to `0` no limit on is applied.
+See also the |Ozzy| command.
+
+default: 0         
+
 
 ------------------------------------------------------------------------------
 g:ozzy_enable_shortcuts                              *g:ozzy_enable_shortcuts* 
@@ -339,14 +344,6 @@ commands shortcuts with their respective 'long version':
     - Okeep : OzzyKeepLast
 
 default: 1
-
-
-------------------------------------------------------------------------------
-g:ozzy_cmdline_completion_map                  *g:ozzy_cmdline_completion_map* 
-
-This is the mapping used for command line completion.
-
-default: '<C-o>'
 
 
 ------------------------------------------------------------------------------
@@ -364,7 +361,16 @@ g:ozzy_most_recent_flag                              *g:ozzy_most_recent_flag*
 This option represent the flag returned by the OzzyModeFlag() function when the 
 current mode is set to 'most recent'.
 
-default: 'R'
+default: 'T'
+
+
+------------------------------------------------------------------------------
+g:ozzy_context_flag                                      *g:ozzy_context_flag* 
+
+This option represent the flag returned by the OzzyModeFlag() function when the 
+current mode is set to 'context'.
+
+default: 'C'    
 
 ------------------------------------------------------------------------------
 g:ozzy_freeze_off_flag                                *g:ozzy_freeze_off_flag* 
@@ -387,15 +393,20 @@ default: 'freeze'
 ==============================================================================
 9. Changelog                                                  *ozzy-changelog*
 
-    * v0.3: 
+    * v0.4
+        - improved command line completion
+        - added new mode 'context'
+        - fixed bugs: error when opening a file with spaces
+
+    * v0.3 
         - added ability to open multiple files at once
         - fixed bugs
 
-    * v0.2:
+    * v0.2
         - added command line completion
         - fixed bugs
 
-    * v0.1: 
+    * v0.1 
         - first stable release 
 
 

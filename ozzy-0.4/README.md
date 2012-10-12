@@ -1,6 +1,6 @@
 # Ozzy.vim
 
-**v0.3**
+**v0.4**
 
 
 Ozzy allows you to open almost any file from anywhere. Just give a file name
@@ -33,10 +33,10 @@ If Ozzy has in its database only one file that match the given `<file name>`,
 then that file is opened. If Ozzy find more that one match in its database, 
 it has to decide what is the right file to open. By default Ozzy opens the most
 frquently used file but you can change this behaviour to open the most recently 
-used file. 
-Suppose now Ozzy has in its database a lot of files with the same name such as `README`
-files. If opening the most frequently or recently used `README` does not fit your
-needs you can still specify a partial path of tha file you want to open:
+used file, or even the file closest to the current working directory (context mode).
+See |ozzy-modes| for more informations.    
+If you want to open a file regardless its frequency, access time or the current context,
+you can specify a partial path:
 
 ```
 :Ozzy <partial path>/<file name>
@@ -44,26 +44,28 @@ needs you can still specify a partial path of tha file you want to open:
 
 But what if you want to open a bunch of files at the same time? Well, if you
 end the `<file name>` with a forward slash `/`, Ozzy will interpret it as
-a directory and it will open all files contained into it (only those files that
-Ozzy has in its database).
+a directory and it will open all files contained into it (not recursively and
+only those files that Ozzy has in its database will be opened).
 
 
 If the filename is long or you don't remember part of it you can use command
-line completion using the `<C-o>` mapping to cycle through possible matches.
+line completion using the <TAB> key to cycle through possible matches.
 
 
 <a name="ozzy-modes" />
 ## Modes
  
 A mode determines how Ozzy chooses the right file to open when it is faced with
-a buch of file paths in its database that match the file  the user want to 
-open. There are mainly two modes available: 
+a buch of file in its database that match the file the user want to 
+open. There are three modes available: 
 
 * `most frequent`: the most frequently used file is opened.
 
 * `most recent`: the most recently used file is opened.
 
-The default mode is 'most frequent' but you can toggle between the two modes 
+* `context`: the file closest to the current working directory is opened.
+
+The default mode is 'most frequent' but you can toggle between the three modes 
 during a vim session with the [OzzyToggleMode](#ozzy-toggle-mode) command or set the default mode 
 by setting the [g:ozzy_mode](#ozzy_mode) option.
 
@@ -74,7 +76,7 @@ When Ozzy is frozen it does not update its database every time you open a file.
 Though, you can still use all the Ozzy commands. If you want to freeze Ozzy
 for a long period of time you can set the [g:ozzy_freeze](#ozzy_freeze) option in your .vimrc
 file. If you want to freeze Ozzy for a brief period you can toggle on and off 
-this option using the [OzzyToggleFreeze](#ozzy-toggle-freeze) command during a vim session.
+this option using the [OzzyToggleFreeze](#ozzy-toggle-freeze) command during a vim session.     
 
 
 <a name="ozzy-inspector" />
@@ -111,7 +113,7 @@ and their relative actions:
 
 ## Commands
 
-
+<a name="ozzy-command" />     
 **Ozzy &lt;file name&gt;**  
 shortcut: O
 
@@ -131,6 +133,7 @@ command when there are two or more files that match the given `<file name>`.
 
 
 -------------------------------------------------------------------------------
+<a name="ozzyinspect-command" />     
 **OzzyInspect**                                                        
 shortcut: Oi
 
@@ -139,6 +142,7 @@ See also [Inspector](#ozzy-inspector).
 
 
 -------------------------------------------------------------------------------
+<a name="ozzyremove-command" />     
 **OzzyRemove &lt;pattern&gt;**                                           
 shortcut: Orm
 
@@ -146,28 +150,29 @@ To remove from the database all the files that match the given pattern. Below
 the accepted patterns:
 
 * `*.<ext>`     
-all files with extension `<ext>`.
-examples: `*.py`, `*.cpp`
+all files with extension `<ext>`.     
+*examples*: `*.py`, `*.cpp`
 
 * `<file name>.*`   
 all files named `<file name>` regardless the extension (note that the files
-that exactly match `<file name>` will be removed too).
-examples: `doc.*`, `log.*`, `README.*`
+that exactly match `<file name>` will be removed too).    
+*examples*: `doc.*`, `log.*`, `README.*`
 
 * `<file name>`    
-all file names that exactly match `<file name>`.
-examples: `test.py`, `junk.txt`, `LICENSE` 
+all file names that exactly match `<file name>`.     
+*examples*: `test.py`, `junk.txt`, `LICENSE` 
 
 * `<file path>`   
-all file paths that ends with '<file path>'.
-examples: `/doc/file.txt` (every 'file.txt' in a folder called 'doc'), `/Users/donald/file.txt` (a specific file.txt)
+all file paths that ends with '<file path>'.    
+*examples*: `/doc/file.txt` (every 'file.txt' in a folder called 'doc'), `/Users/donald/file.txt` (a specific file.txt)
 
 * `<path>/`   
-all file paths that contains `<path>/`.
-examples: `/doc/` (every file in a folder called 'doc')    
+all file paths that contains `<path>/`.    
+*examples*: `/doc/` (every file in a folder called 'doc')    
 
 
 -------------------------------------------------------------------------------
+<a name="ozzykeeplast-command" />     
 **OzzyKeepLast &lt;time period&gt;**                                  
 shortcut: Okeep
 
@@ -194,6 +199,7 @@ See also the [g:ozzy_keep](#ozzy_keep) option.
 
 
 -------------------------------------------------------------------------------
+<a name="ozzyreset-command" />     
 **OzzyReset**                                                   
 
 To remove all files entries from the database.
@@ -204,7 +210,7 @@ To remove all files entries from the database.
 **OzzyToggleMode**                                            
 
 To toggle between `most frequent` and `most recent` modes.   
-See also [Modes](#ozzy-modes) and the [g:ozzy_mode+(#ozzy-mode) option. 
+See also [Modes](#ozzy-modes) and the [g:ozzy_mode](#ozzy_mode) option. 
 
 
 -------------------------------------------------------------------------------
@@ -222,15 +228,7 @@ To toggle between `consider extension` and `ignore extensions` mode.
 See also the [g:ozzy_ignore_ext](#ozzy_ignore_ext) option.     
 
 
-## mappings
-
-
-**&lt;C-o&gt;**  
-This is a command line mapping used for command line completions.   
-See also [g:ozzy_cmdline_completion_map](#ozzy_cmdline_completion_map)
-
-
-## Settings
+## Basic settings
 
 
 <a name="ozzy_mode" />
@@ -241,6 +239,7 @@ Below all the available modes:
 
 * `most_frequent`: the most used file with the given name is opened.
 * `most_recent`: the most recently accessed file is opened.
+* `context`: the file closest to the current working directory is opened.
 
 *default:* 'most_frequent'
 
@@ -283,24 +282,24 @@ updated if already exists in the database. Below all the accepted patterns:
 
 * `*.<ext>`    
 all files with extension `<ext>`.    
-examples: `*.py`, `*.cpp`
+*examples*: `*.py`, `*.cpp`
 
 * `<file name>.*`   
 all files named `<file name>` regardless the extension (note that the files
 that exactly match `<file name>` will be ignored too).   
-examples: `doc.*`, `log.*`, `README.*`
+*examples*: `doc.*`, `log.*`, `README.*`
 
 * `<file name>`    
 all file names that exactly match `<file name>`.   
-examples: `test.py`, `junk.txt`, `LICENSE` 
+*examples*: `test.py`, `junk.txt`, `LICENSE` 
 
 * `<file path>`  
 all file paths that ends with '<file path>'.   
-examples: `/doc/file.txt` (every 'file.txt' in a folder called 'doc'), `/Users/donald/file.txt` (a specific file.txt)
+*examples*: `/doc/file.txt` (every 'file.txt' in a folder called 'doc'), `/Users/donald/file.txt` (a specific file.txt)
 
 * `<path>/`  
 all file paths that contains `<path>/`.   
-examples: `/doc/` (every file in a folder called 'doc')  
+*examples*: `/doc/` (every file in a folder called 'doc')  
 
 *default:* []
 
@@ -322,84 +321,33 @@ example:
 
 
 -------------------------------------------------------------------------------
-**g:ozzy_enable_shortcuts**                           
-
-If set to 1, this option enables the commands shortcut. Below all the available 
-commands shortcuts with their respective 'long version':
-
-* O : Ozzy
-* Oi : OzzyInspect
-* Orm : OzzyRemove
-* Okeep : OzzyKeepLast
-
-*default:* 1
-
-
--------------------------------------------------------------------------------
-<a name="ozzy_cmdline_completion_map" />
-**g:ozzy_cmdline_completion_map**     
-
-This is the mapping used for command line completion.
-
-*default:* '&lt;C-o&gt;'  
-
--------------------------------------------------------------------------------
 <a name="ozzy_max_num_files_to_open" />
 **g:ozzy_max_num_files_to_open**     
 
-The max number of files that can be opened when you use the *open multiple files*
-feature. See the |OzzyOpen| command.
+The max number of files that can be opened when you open multiple files with the 
+`Ozzy` command. If this option is set to `0` no limit on is applied.
+See the [Ozzy](#ozzy-command) command.
 
-*default:* 10   
+*default:* 0   
 
--------------------------------------------------------------------------------
-**g:ozzy_most_frequent_flag**                       
-
-This option represent the flag returned by the `OzzyModeFlag()` function when the 
-current mode is set to `most_frequent`. 
-
-*default:* 'F'
-
-
--------------------------------------------------------------------------------
-**g:ozzy_most_recent_flag**                         
-
-This option represent the flag returned by the `OzzyModeFlag()` function when the 
-current mode is set to `most_recent`.
-
-*default:* 'R'
-
-
--------------------------------------------------------------------------------
-**g:ozzy_freeze_off_flag**                          
- 
-This option represent the flag returned by the `OzzyFreezeFlag()` function when 
-Ozzy is not frozen.
-
-*default:* ''
-
-
--------------------------------------------------------------------------------
-**g:ozzy_freeze_on_flag**                             
-
-This option represent the flag returned by the `OzzyFreezeFlag()` function when 
-Ozzy is frozen.  
-
-*default:* 'freeze'
-                                       
 
 ## Changelog
 
-* v0.3: 
+* v0.4
+  - improved command line completion
+  - added new mode 'context'
+  - fixed bugs: error when opening a file with spaces
+   
 
-    - added ability to open multiple files at once
-    - fixed bugs
+* v0.3 
+  - added ability to open multiple files at once
+  - fixed bugs
+   
 
-* v0.2:
+* v0.2
+  - added command line completion
+  - fixed bugs
+  
 
-    - added command line completion
-    - fixed bugs
-
-* v0.1: 
-
-    - first stable release   
+* v0.1
+  - first stable release   
