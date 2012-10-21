@@ -1,11 +1,11 @@
 " ============================================================================
 " File: ozzy.vim
-" Description: Opens almost any file from anywhere  
+" Description: Quick files launcher  
 " Mantainer: Giacomo Comitti (https://github.com/gcmt)
 " Url: https://github.com/gcmt/ozzy.vim
 " License: MIT
-" Version: 0.4
-" Last Changed: 11 Oct 2012
+" Version: 0.5
+" Last Changed: 21 Oct 2012
 " ============================================================================
 
 
@@ -48,6 +48,10 @@ if !exists('g:ozzy_max_num_files_to_open')
     let g:ozzy_max_num_files_to_open = 0
 endif      
 
+if !exists('g:ozzy_ignore_case')
+    let g:ozzy_ignore_case = 0
+endif         
+
 if !exists('g:ozzy_most_frequent_flag')
     let g:ozzy_most_frequent_flag = 'F'
 endif 
@@ -73,7 +77,7 @@ endif
 
 python << END
 
-# ozzy init {{{                      
+# ozzy init {{{                       
 # ============================================================================
 
 # -*- coding: utf-8 -*-
@@ -98,7 +102,7 @@ Record = namedtuple('Record', 'path frequency last_access')
 
 # current opened buffers
 buffers = [] 
-
+                                                     
 # modes
 MODES = ['most_frequent', 'most_recent', 'context']
 
@@ -158,7 +162,7 @@ if any((setting('mode') not in MODES,
 
 # }}}
 
-# inspector definition and creation {{{
+# inspector definition and creation {{{                
 class Inspector(object):
     """Inspector definition.
 
@@ -187,21 +191,21 @@ inspector = Inspector()
 # main function
 # ============================================================================
 
-# _update_curr_buffer {{{
+# _update_curr_buffer {{{                  
 def _update_buffer(bufname=None):
     """Update the attributes of the current opened file in the database.
 
     This function is called whenever a buffer is read (on BufReadPost vim 
     event).
     """
+    if bufname is None:
+        bufname = vim.current.buffer.name  
 
-    if setting('freeze', fmt=bool):
+    if (setting('freeze', fmt=bool) 
+        or os.path.split(bufname)[1] == inspector.name):
         return
 
-    if bufname is None:
-        bufname = vim.current.buffer.name
-
-    _cond = not _match_ignore_patterns(bufname) 
+    _cond = not _match_patterns(bufname, setting('ignore')) 
     if _cond and bufname not in buffers:
         if bufname in db:
             db[bufname] = Record(bufname, db[bufname].frequency + 1, dt.now())
@@ -214,16 +218,43 @@ def _update_buffer(bufname=None):
 # helper functions
 # ============================================================================
 
-# _find_fname_match {{{                    
+# _update_inspector {{{               
+def _update_inspector(func):
+    def wrapper(*args, **kwargs):
+        _save_inspector_cursor_pos()
+        func(*args, **kwargs)
+        if not _inspector_is_current_buffer():
+            return
+        OzzyInspect()       
+        _insert_line_indicator()
+
+    return wrapper   
+# }}}  
+
+# _sync_db {{{
+def _sync_db(func):
+    def wrapper(*args, **kwargs):
+        func(*args, **kwargs)
+        db.sync()
+    return wrapper
+# }}}
+
+# _find_fname_match {{{                     
 def _find_fname_match(target):
     matches = []
     for r in db.values():
         fname = os.path.split(r.path)[1]
         fname_no_ext = os.path.splitext(fname)[0]
+
+        if setting('ignore_case', fmt=int):
+            fname = fname.lower()
+            fname_no_ext = fname_no_ext.lower()
+
         cond1 = target == fname 
         cond2 = setting('ignore_ext', fmt=bool) and fname_no_ext == target
         if cond1 or cond2:
             matches.append(r)
+
     return matches        
 # }}}
 
@@ -231,11 +262,19 @@ def _find_fname_match(target):
 def _find_path_match(target):
     matches = []
     for r in db.values():
-        path_no_ext = os.path.splitext(r.path)[0]
-        cond1 = r.path.endswith(target)
+ 
+        if setting('ignore_case', fmt=int):
+            path = r.path.lower()
+        else:
+            path = r.path
+
+        path_no_ext = os.path.splitext(path)[0]
+
+        cond1 = path.endswith(target)
         cond2 = setting('ignore_ext', fmt=bool) and path_no_ext.endswith(target)
         if cond1 or cond2:
             matches.append(r)
+
     return matches        
 # }}}        
 
@@ -279,7 +318,8 @@ def _find_matches_distance(target):
     return r
 # }}}
 
-# _remove_from_db_if {{{         
+# _remove_from_db_if {{{                
+@_sync_db
 def _remove_from_db_if(func, getter):
     nremoved = 0
     for record in db.values():
@@ -289,9 +329,9 @@ def _remove_from_db_if(func, getter):
     return nremoved    
 # }}}
 
-# _match_ignore_patterns {{{                
-def _match_ignore_patterns(target):
-    for patt in setting('ignore'):
+# _match_patterns {{{                 
+def _match_patterns(target, patterns):
+    for patt in patterns:
         if patt.startswith('*.'):
             if target.endswith(patt[1:]):
                 return True
@@ -344,27 +384,6 @@ def _inspector_is_current_buffer():
         return True
     else:
         return False
-# }}}
-
-# _update_inspector {{{               
-def _update_inspector(func):
-    def wrapper(*args, **kwargs):
-        _save_inspector_cursor_pos()
-        func(*args, **kwargs)
-        if not _inspector_is_current_buffer():
-            return
-        OzzyInspect()       
-        _insert_line_indicator()
-
-    return wrapper   
-# }}}  
-
-# _sync_db {{{
-def _sync_db(func):
-    def wrapper(*args, **kwargs):
-        func()
-        db.sync()
-    return wrapper
 # }}}
 
 # _escape_spaces {{{
@@ -504,7 +523,8 @@ def OzzyKeepLast(args):
     echom('Ozzy: %d files removed' % nremoved)
 # }}}
 
-# OzzyReset {{{                      
+# OzzyReset {{{                       
+@_sync_db
 @_update_inspector
 def OzzyReset():
     """To clear the entire database."""
@@ -552,6 +572,83 @@ def OzzyInspect(order_by=None, reverse_order=None, show_help=None,
     vim.command("setlocal nomodifiable")
 
     _map_keys()
+# }}}
+
+# OzzyAddDirectory {{{  
+@_sync_db
+def AddDirectory(args):
+
+    def get_opt(option, arglist, expect_arg=True):
+        try:
+            if expect_arg:
+                return arglist[arglist.index(option) + 1]
+            else:
+                if arglist.index(option):
+                    return True
+        except (IndexError, ValueError):
+            pass
+
+    # return true if cur_root is not a directory contained into an hidden
+    # directory
+    def into_hidden_dir(cur_root, topdir):
+        s = cur_root.replace(topdir, '')
+        return any([t.startswith('.') for t in s.split('/')]) 
+    
+
+    arglist = args.split()
+
+    topdir = arglist[0]
+    if topdir == '.':
+        topdir = vim.eval('getcwd()')
+
+    # extract options from the argument list
+
+    a_opt = get_opt('-a', arglist)
+    if a_opt:
+        add_list = a_opt.strip(',').split(',')
+    else:
+        add_list = []
+
+    i_opt = get_opt('-i', arglist)
+    if i_opt:
+        ignore_list = i_opt.strip(',').split(',')
+    else:
+        ignore_list = [] 
+
+    add_hidden_dirs = get_opt('-h', arglist, expect_arg=False)
+        
+    # find all files
+
+    paths = []
+    for root , dirs, files in os.walk(topdir):
+
+        if (add_hidden_dirs
+            or not into_hidden_dir(root, topdir)):
+
+            for f in files:
+                path = os.path.join(root, f)
+
+                if (not _match_patterns(path, setting('ignore')) 
+                    and path not in db):
+
+                    if ((not ignore_list
+                         or not _match_patterns(path, ignore_list))
+                        and
+                        (not add_list
+                         or _match_patterns(path, add_list))):
+
+                        paths.append(path)
+
+    msg = ("input('I''m going to add %d files, are you sure? (yN): ')" 
+           % len(paths))
+    answer = vim.eval(msg)
+    vim.command('redraw') # to clear the command line
+    if answer in ['y', 'Y', 'yes', 'Yes']:
+        for p in paths:
+            db[p] = Record(p, 1, dt.now())  
+        echom('Ozzy: %d files successfully added!' % len(paths))
+    else:
+        echom('Ozzy: no files added!') 
 # }}}
 
 # ToggleMode {{{
@@ -744,7 +841,8 @@ def _insert_line_indicator():
         vim.command("setlocal nomodifiable")
 # }}}
 
-# _delete_selected_records {{{ 
+# _delete_selected_records {{{            
+@_sync_db
 @_update_inspector 
 def _delete_selected_records(): 
     """To delete the selected records from the database.
@@ -767,7 +865,7 @@ def _delete_selected_records():
         vim.command('delmarks <>')
 # }}}
 
-# _touch_record_curr_line {{{
+# _touch_record_curr_line {{{               
 @_sync_db
 @_update_inspector
 def _touch_record_curr_line():
@@ -818,7 +916,8 @@ def _open_record_curr_line():
     """
 
     path = _get_path_on_line(vim.current.window.cursor[0])
-    vim.command('e %s' % _escape_spaces(path))
+    if path:
+        vim.command('e %s' % _escape_spaces(path))
 # }}}    
  
 # _open_record_curr_line_bg {{{ 
@@ -829,8 +928,9 @@ def _open_record_curr_line_bg():
     This function is called only inside the Inspector.
     """                 
     path = _get_path_on_line(vim.current.window.cursor[0])
-    vim.command('bad %s' % _escape_spaces(path))
-    _update_buffer(path)
+    if path:
+        vim.command('bad %s' % _escape_spaces(path))
+        _update_buffer(path)
 # }}}   
 
 # _get_path_on_line {{{               
@@ -895,8 +995,12 @@ function! Cmdline_completion(seed, cmdline, curpos)
 python << END
 seed = vim.eval('a:seed')
 
-matches = [r for r in db.values() 
-           if os.path.split(r.path)[1].startswith(seed)]  
+if setting('ignore_case', fmt=int):
+    matches = [r for r in db.values() 
+               if os.path.split(r.path)[1].lower().startswith(seed)]  
+else:
+    matches = [r for r in db.values() 
+               if os.path.split(r.path)[1].startswith(seed)]  
 
 attr = ('frequency' if setting('mode') in ['most_frequent', 'context'] 
         else 'last_access')   
@@ -939,7 +1043,7 @@ augroup ozzy_plugin
     au!
     au CursorMoved * python _insert_line_indicator()
     au BufEnter * python _remove_unlisted_buffers()
-    au BufWrite,BufReadPost * python _update_buffer()
+    au BufNewFile,BufReadPost * python _update_buffer()
     au VimLeave * python _db_maintenance_and_close()
 augroup END 
 
@@ -950,6 +1054,7 @@ augroup END
 
 command! OzzyInspect python OzzyInspect()
 command! -nargs=1 -complete=customlist,Cmdline_completion Ozzy python OzzyOpen(<q-args>)
+command! -nargs=+ OzzyAddDirectory python AddDirectory(<q-args>)
 
 command! -nargs=1 -complete=customlist,Cmdline_completion OzzyRemove python OzzyRemove(<q-args>)
 command! -nargs=+ OzzyKeepLast python OzzyKeepLast(<q-args>)
@@ -961,6 +1066,7 @@ command! OzzyToggleExtension python ToggleExtension()
 
 if g:ozzy_enable_shortcuts
     command! Oi python OzzyInspect()
+    command! -nargs=+ OAdd python AddDirectory(<q-args>)
     command! -nargs=1 -complete=customlist,Cmdline_completion O python OzzyOpen(<q-args>)
     command! -nargs=1 -complete=customlist,Cmdline_completion Orm python OzzyRemove(<q-args>)
     command! -nargs=+ Okeep python OzzyKeepLast(<q-args>)

@@ -5,7 +5,7 @@
 
                                      ~
                               Reference Manual
-                                   v.0.4
+                                   v.0.5
 
 ==============================================================================
 CONTENTS                                                       *ozzy-contents*
@@ -151,6 +151,48 @@ See also |ozzy-inspector|.
 
 
 ------------------------------------------------------------------------------
+OzzyAddDirectory <directory> [options]                      *OzzyAddDirectory*                                 
+shortcut: OAdd
+
+To add all files contained into the given <directory> (except those contained
+into hidden directories). The <directory> argument must be an absolute path
+but if you want to add all files contained into the current working directory
+you can use the '.' shortcut instead.
+
+You can customize the default behavior of this command with the following 
+options:
+
+
+   -h: to add files contained into hidden directories.
+
+   -a <comma separated list>: use this option to add only specific files.
+       See below for all the allowed patterns.
+
+   -i <comma separated list>: use this option to ignore specific files.
+       See below for all the allowed patterns.
+
+
+Below are listed all the patterns you can use:
+
+    - *.<ext>  
+    all files with extension '<ext>'.
+    examples: *.py *.cpp
+
+    - <file name>.*
+    all files named '<file name>' regardless the extension (note that the files
+    that exactly match <file name> will be considered too).
+    examples: doc.* log.* README.*
+
+    - <file name> 
+    all file names that exactly match '<file name>'.
+    examples: test.py junk.txt LICENSE 
+
+    - <path>/
+    all file paths that contains '<path>/'.
+    examples: doc/ (every file in <anything>/doc/)    
+
+
+------------------------------------------------------------------------------
 OzzyRemove <pattern>                                              *OzzyRemove*
 shortcut: Orm
 
@@ -177,7 +219,7 @@ the accepted patterns:
 
     - <path>/
     all file paths that contains '<path>/'.
-    examples: /doc/ (every file in a folder called 'doc')    
+    examples: doc/ (every file in a folder called 'doc')    
 
 
 ------------------------------------------------------------------------------
@@ -347,6 +389,16 @@ default: 1
 
 
 ------------------------------------------------------------------------------
+g:ozzy_ignore_case                                        *g:ozzy_ignore_case* 
+
+If set to 1, this option enables case insensitive command line completion and
+files opening. Thi means you can type lowercase file names all the time  
+regardless their real case. 
+
+default: 0   
+
+
+------------------------------------------------------------------------------
 g:ozzy_most_frequent_flag                          *g:ozzy_most_frequent_flag* 
 
 This option represent the flag returned by the OzzyModeFlag() function when the 
@@ -393,21 +445,27 @@ default: 'freeze'
 ==============================================================================
 9. Changelog                                                  *ozzy-changelog*
 
+    * v0.5
+        - added OzzyAddDirectory command to quickly add to the database all
+          files contained into a given directory. 
+        - added case insensitive files opening and command line completion.
+        - fixed minor bugs.
+
     * v0.4
-        - improved command line completion
-        - added new mode 'context'
-        - fixed bugs: error when opening a file with spaces
+        - improved command line completion.
+        - added new mode 'context'.
+        - fixed bugs: error when opening a file with spaces.
 
     * v0.3 
-        - added ability to open multiple files at once
-        - fixed bugs
+        - added ability to open multiple files at once.
+        - fixed bugs.
 
     * v0.2
-        - added command line completion
-        - fixed bugs
+        - added command line completion.
+        - fixed bugs.
 
     * v0.1 
-        - first stable release 
+        - first stable release. 
 
 
 ==============================================================================

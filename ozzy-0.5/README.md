@@ -1,6 +1,6 @@
 # Ozzy.vim
 
-**v0.4**
+**v0.5**
 
 
 Ozzy allows you to open almost any file from anywhere. Just give a file name
@@ -49,7 +49,7 @@ only those files that Ozzy has in its database will be opened).
 
 
 If the filename is long or you don't remember part of it you can use command
-line completion using the <TAB> key to cycle through possible matches.
+line completion using the &lt;TAB&gt; key to cycle through possible matches.
 
 
 <a name="ozzy-modes" />
@@ -134,7 +134,7 @@ command when there are two or more files that match the given `<file name>`.
 
 -------------------------------------------------------------------------------
 <a name="ozzyinspect-command" />     
-**OzzyInspect**                                                        
+**OzzyInspect**            
 shortcut: Oi
 
 Open the database inspector.    
@@ -142,8 +142,49 @@ See also [Inspector](#ozzy-inspector).
 
 
 -------------------------------------------------------------------------------
+<a name="ozzyadd-command" />     
+**OzzyAddDirectory <directory> [options]**                     
+shortcut: OAdd
+
+To add all files contained into the given `directory` (except those contained
+into hidden directories). The `directory` argument must be an absolute path
+but if you want to add all files contained into the current working directory
+you can use the `.` shortcut instead.
+
+You can customize the default behavior of this command with the following options:
+
+
+* `-h`: to add files contained into hidden directories.
+
+* `-a <comma separated list>`: use this option to add only specific files.
+   See below for all the allowed patterns.
+
+* `-i <comma separated list>`: use this option to ignore specific files.
+   See below for all the allowed patterns.
+
+Below are listed all the patterns you can use:
+
+* `*.<ext>`     
+all files with extension `<ext>`.     
+*examples*: `*.py`, `*.cpp`
+
+* `<file name>.*`   
+all files named `<file name>` regardless the extension (note that the files
+that exactly match `<file name>` will be considered too).    
+*examples*: `doc.*`, `log.*`, `README.*`
+
+* `<file name>`    
+all file names that exactly match `<file name>`.     
+*examples*: `test.py`, `junk.txt`, `LICENSE` 
+
+* `<path>/`   
+all file paths that contains `<path>/`.    
+*examples*: `doc/` (every file in a folder called 'doc') 
+
+
+-------------------------------------------------------------------------------
 <a name="ozzyremove-command" />     
-**OzzyRemove &lt;pattern&gt;**                                           
+**OzzyRemove &lt;pattern&gt;**       
 shortcut: Orm
 
 To remove from the database all the files that match the given pattern. Below
@@ -168,12 +209,12 @@ all file paths that ends with '<file path>'.
 
 * `<path>/`   
 all file paths that contains `<path>/`.    
-*examples*: `/doc/` (every file in a folder called 'doc')    
+*examples*: `doc/` (every file in a folder called 'doc')    
 
 
 -------------------------------------------------------------------------------
 <a name="ozzykeeplast-command" />     
-**OzzyKeepLast &lt;time period&gt;**                                  
+**OzzyKeepLast &lt;time period&gt;**       
 shortcut: Okeep
 
 Where <time period> is an argument composed of two parts: a number n > 0 and
@@ -200,14 +241,14 @@ See also the [g:ozzy_keep](#ozzy_keep) option.
 
 -------------------------------------------------------------------------------
 <a name="ozzyreset-command" />     
-**OzzyReset**                                                   
+**OzzyReset**                   
 
 To remove all files entries from the database.
 
 
 -------------------------------------------------------------------------------
 <a name="ozzy-toggle-mode" />
-**OzzyToggleMode**                                            
+**OzzyToggleMode**            
 
 To toggle between `most frequent` and `most recent` modes.   
 See also [Modes](#ozzy-modes) and the [g:ozzy_mode](#ozzy_mode) option. 
@@ -232,7 +273,7 @@ See also the [g:ozzy_ignore_ext](#ozzy_ignore_ext) option.
 
 
 <a name="ozzy_mode" />
-**g:ozzy_mode**                                                    
+**g:ozzy_mode**                 
 
 Set this variable to define the default behaviour for opening files. 
 Below all the available modes:
@@ -258,7 +299,7 @@ with the *OzzyToggleFreeze* command.
 
 -------------------------------------------------------------------------------
 <a name="ozzy_ignore_ext" />
-**g:ozzy_ignore_ext**                                        
+**g:ozzy_ignore_ext**         
 
 Set this option to 1 and Ozzy will ignore extension when serching in its
 database for the file to open. Suppose that Ozzy has two entries in its
@@ -274,7 +315,7 @@ specify the extnsion if you want.
 
 -------------------------------------------------------------------------------
 <a name="ozzy_ignore" />
-**g:ozzy_ignore**                                             
+**g:ozzy_ignore**        
 
 This is a list containing naive patterns that tell Ozzy what to ignore. That is, 
 any file that match any of these patterns will not be added to the database or
@@ -299,14 +340,14 @@ all file paths that ends with '<file path>'.
 
 * `<path>/`  
 all file paths that contains `<path>/`.   
-*examples*: `/doc/` (every file in a folder called 'doc')  
+*examples*: `doc/` (every file in a folder called 'doc')  
 
 *default:* []
 
 
 -------------------------------------------------------------------------------
 <a name="ozzy_keep" />
-**g:ozzy_keep**                                       
+**g:ozzy_keep**           
 
 This option can be set to a number n >= 0 where n represent a number of days.
 If set to 0 (default) this options simply do nothing. If set to a number n > 0,
@@ -333,21 +374,23 @@ See the [Ozzy](#ozzy-command) command.
 
 ## Changelog
 
+* v0.5
+  - added OzzyAddDirectory command to quickly add to the database all files contained into a given directory.
+  - added case insensitive files opening and command line completion.
+  - fixed minor bugs. 
+
 * v0.4
-  - improved command line completion
-  - added new mode 'context'
-  - fixed bugs: error when opening a file with spaces
-   
+  - improved command line completion.
+  - added new mode 'context'.
+  - fixed bugs: error when opening a file with spaces.
 
 * v0.3 
-  - added ability to open multiple files at once
-  - fixed bugs
-   
-
+  - added ability to open multiple files at once.
+  - fixed bugs.
+     
 * v0.2
-  - added command line completion
-  - fixed bugs
-  
-
+  - added command line completion.
+  - fixed bugs.
+     
 * v0.1
-  - first stable release   
+  - first stable release.   
