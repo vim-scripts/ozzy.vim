@@ -1,11 +1,11 @@
 *ozzy.txt* *ozzy*
 
                                     Ozzy
-                             Open files quickly.
+                            Quick files launcher.
 
                                      ~
                               Reference Manual
-                                   v.0.5
+                                  v.0.6.0
 
 ==============================================================================
 CONTENTS                                                       *ozzy-contents*
@@ -55,7 +55,7 @@ context, you can specify a partial path:
 But what if you want to open a bunch of files at the same time? Well, if you
 end the `<file name>` with a forward slash `/`, Ozzy will interpret it as
 a directory and it will open all files contained into it (not recursively and
-only those files that Ozzy has in its database will be opened).
+only those files that Ozzy has in its database).
 
 
 If the filename is long or you don't remember part of it you can use command
@@ -365,13 +365,24 @@ example: let g:ozzy_keep = 30
 default: 0
 
 -------------------------------------------------------------------------------
-g:ozzy_max_num_files_to_open     
+g:ozzy_max_num_files_to_open                     *g:ozzy_max_num_files_to_open*     
 
 The max number of files that can be opened when you open multiple files with the 
 `Ozzy` command. If this option is set to `0` no limit on is applied.
 See also the |Ozzy| command.
 
 default: 0         
+
+
+-------------------------------------------------------------------------------
+g:ozzy_open_files_recursively                   *g:ozzy_open_files_recursively*     
+
+Set this option to open all files recursively when using the |Ozzy| command with
+a directory name (<path>/) as argument. If set to 0, only those files that are
+directly contained in the given directory (only one level depth) will be opened.
+See also the |Ozzy| command.
+
+default: 1        
 
 
 ------------------------------------------------------------------------------
@@ -444,6 +455,11 @@ default: 'freeze'
 
 ==============================================================================
 9. Changelog                                                  *ozzy-changelog*
+
+    * v0.6.0
+       - now Ozzy opens all files recursively when using the Ozzy command with
+         a directory name as argument.   
+       - fixed bugs: error message using OzzyKeepLast command.  
 
     * v0.5
         - added OzzyAddDirectory command to quickly add to the database all

@@ -1,41 +1,137 @@
 This is a mirror of http://www.vim.org/scripts/script.php?script_id=4256
 
 
-Ozzy is very straightforward to use. Once installed, you can start editing your
-favourite files as always. Once you open a file Ozzy registers it and from then
+Basic usage
+------------------------------------------------------------------------------------------
+
+Ozzy is very straightforward to use. Once installed, you can start editing 
+files as always. Once you open a file Ozzy keeps track of it and from then 
 you can open that file with the following command:
 
-    :Ozzy <file name>
+  :Ozzy <file name>
 
-If Ozzy has in its database only one file that match the given <file name>, 
-then that file is opened. If Ozzy find more that one match in its database, 
-it has to decide what is the right file to open. By default Ozzy opens the most
-frquently used file but you can change this behaviour to open the most recently 
-used file, or even the file closest to the current working directory (context mode).
-If you want to open a file regardless its frequency, access time or the current context,
-you can specify a partial path:
+How Ozzy knows the right file to open when there are two or more files with 
+the same name? Ozzy by default opens the file who has been opened more 
+frequently. You can customize this behavior setting the 'g:ozzy_mode' variable 
+to the following values:
 
-    :Ozzy <partial path>/<file name>
+  * 'most frequent': open the most frequently opened file.
+  * 'most recent': open the most recently opened file.
+  * 'context': open the closest file respect to the current working directory.
 
-But what if you want to open a bunch of files at the same time? Well, if you
-end the `<file name>` with a forward slash `/`, Ozzy will interpret it as
-a directory and it will open all files contained into it (not recursively and
-only those files that Ozzy has in its database will be opened).
+You are not limited to just file names. The 'Ozzy' command accepts even partial
+paths such as 'directory/filename' and directory names such as 'directory/'. 
+In the latter case note the presence of a forward slash as the last character: 
+this cause Ozzy to open all the files contained in the directory (note that only 
+files tracked by Ozzy will be opened).
 
-If the filename is long or you don't remember part of it you can use command
-line completion using the <TAB> key to cycle through possible matches. 
+Command line tab completion is supported but only for file names. 
 
-
-Other powerful commands are:
-
-    * OzzyInspect: to open the inspector from where you can view the entire database 
-      content and modify it.
-    
-    * OzzyRemove and OzzyKeepLast: to remove files from the database.
+Below are listed some basic available commands:
 
 
-Get the lastest version here: https://github.com/gcmt/ozzy.vim
+Ozzy (shortcut: O)
+------------------------------------------------------------------------------------------
 
-NOTE: Ozzy has been fully tested only on mac os 10.6 and linux platforms. 
+  Depending to the type of the value passed as argument this command 
+  performs different actions:
 
-NOTE2: Ozzy is still in beta. If something does not work for you let me know about it.
+  * if a file name is given then a file in the index that match the give name is
+    opened (the right file is selected depending on the current mode: most
+    frequent, most recent or context). See also the option `g:ozzy_ignore_ext`.
+
+  * if a partial path ending with a filename is given the the behavior descibed
+    above is retained but there might be less potenyial conflicts.
+
+  * if a partial path ending with a forward slash is given the all files
+    contained in that directory will be opened (only those files tracked by
+    Ozzy). If Ozzy has in its index two or more directories with the same name, 
+    the right one is selected according to the current mode:
+
+    - 'most frequent': the directory that contains more frequently opened files is opened.
+    - 'most recent': the directory that contains more recently accessed files is opened.
+    - 'context': the closest directory is opened.
+   
+  Note however that Ozzy does not really scan the physical directory on the
+  file system, but instead it will search exclusively in its database for possible
+  matches. You have to open files at least once manually or with the
+  OzzyAddDirectory command before Ozzy can open them.
+
+
+OzzyInspect (shortcut: Oi)  
+------------------------------------------------------------------------------------------
+
+  Opens the Inspector buffer. This place is where you can inspect the whole file
+  index and perform some actions on single entries like increasing the access
+  frequency, setting the last access time, doing various sorts, ecc.. For more
+  information about available actions type `?` inside the Inspector buffer.
+
+
+OzzyScope (shortcut: Oscope)
+------------------------------------------------------------------------------------------
+
+  Sets the Ozzy scope to the given path. By default the scope is global but once
+  you set it to a certain `path` Ozzy will be no more able to open files that
+  reside outside that `path`. Further, they will be no more indexed and
+  included command line completion. Already indexed files won't be removed:
+  you can still interact with them throughout the Inspector. If you want to add
+  all files contained into the current working directory you can use the `.`
+  shortcut instead. To add the current parent directory use the `..` argument.
+  Use the `...` argument to add the project root directory (see the
+  `g:ozzy_what_in_project_root` option). By default *Ozzy* assumes the project 
+  root directory as the one containing a `.git`, `.hg` or a `.svn` folder along 
+  the current working directory path.
+  To restore the global scope use the command with no arguments.
+
+  You can customize the default behavior with the following options:
+
+  * -p <comma separated list>: override the global `g:ozzy_what_in_project_root` 
+    options (works only with the special argument `...`)
+
+
+OzzyAddDirectory (shortcut: Oadd)  
+------------------------------------------------------------------------------------------                   
+
+  To add all files contained into the given `path` (by default except those
+  contained into hidden directories). If you want to add all files contained into
+  the current working directory you can use the `.` shortcut instead. To add the
+  current parent directory use the `..` argument. Use the `...` argument to add
+  the project root directory (see the `g:ozzy_what_in_project_root` option). By
+  default Ozzy assumes the project root directory as the one containing
+  a `.git`, `.hg` or a `.svn` folder along the current working directory path.
+
+  You can customize the default behavior with the following options:
+
+  * -h: add files contained into hidden directories.
+  * -a <comma separated list>: add only specific files. See below for allowed patterns.
+  * -i <comma separated list>: ignore specific files. See below for allowed patterns. 
+  * -p <comma separated list>: override the global `g:ozzy_what_in_project_root` 
+    option (works only with the special argument `...`).
+
+  Allowed patterns:
+
+  * `*.<ext>`     
+    all file names with extension `<ext>`.     
+    examples: `*.py`, `*.cpp`
+
+  * `<file name>.*`   
+    all files named `<file name>` regardless the extension (file names that 
+    exactly match `<file name>` will be considered too).    
+    examples: `doc.*`, `log.*`, `README.*`
+
+  * `<file name>`    
+    all file names that exactly match `<file name>`.     
+    examples: `test.py`, `junk.txt`, `LICENSE` 
+
+  * `<partial path>/`   
+    all paths that contain `<path>`.    
+    examples: `doc/` (every file in a folder called 'doc')   
+
+------------------------------------------------------------------------------------------
+
+For information about other available commands and settings see 
+the full documentation. (:help ozzy) 
+
+Get latest versions at: https://github.com/gcmt/ozzy.vim
+
+

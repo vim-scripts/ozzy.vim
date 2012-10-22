@@ -1,6 +1,6 @@
 # Ozzy.vim
 
-**v0.5**
+**v0.6.0**
 
 
 Ozzy allows you to open almost any file from anywhere. Just give a file name
@@ -44,8 +44,8 @@ you can specify a partial path:
 
 But what if you want to open a bunch of files at the same time? Well, if you
 end the `<file name>` with a forward slash `/`, Ozzy will interpret it as
-a directory and it will open all files contained into it (not recursively and
-only those files that Ozzy has in its database will be opened).
+a directory and it will open all files contained into that directory (only 
+those files that Ozzy has in its database).
 
 
 If the filename is long or you don't remember part of it you can use command
@@ -373,6 +373,11 @@ See the [Ozzy](#ozzy-command) command.
 
 
 ## Changelog
+
+* v0.6.0
+  - now Ozzy opens all files recursively when using the Ozzy command with
+    a directory name as argument.
+  - fixed bugs: error message using OzzyKeepLast command.  
 
 * v0.5
   - added OzzyAddDirectory command to quickly add to the database all files contained into a given directory.

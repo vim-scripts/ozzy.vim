@@ -4,13 +4,12 @@
 " Mantainer: Giacomo Comitti (https://github.com/gcmt)
 " Url: https://github.com/gcmt/ozzy.vim
 " License: MIT
-" Version: 0.5
-" Last Changed: 21 Oct 2012
+" Version: 0.6.0
+" Last Changed: 22 Oct 2012
 " ============================================================================
 
 
 " init ------------------------------------------ {{{
-
 if exists("g:loaded_ozzy") || &cp || !has('python')
     finish
 endif
@@ -18,66 +17,9 @@ let g:loaded_ozzy = 1
 
 " }}}
 
-" set default options --------------------------- {{{
-
-if !exists('g:ozzy_mode')
-    let g:ozzy_mode = 'most_frequent'
-endif
-
-if !exists('g:ozzy_freeze')
-    let g:ozzy_freeze = 0
-endif      
-
-if !exists('g:ozzy_ignore_ext')
-    let g:ozzy_ignore_ext = 1
-endif
-
-if !exists('g:ozzy_ignore')
-    let g:ozzy_ignore = []
-endif
-
-if !exists('g:ozzy_keep')
-    let g:ozzy_keep = 0
-endif    
- 
-if !exists('g:ozzy_enable_shortcuts')
-    let g:ozzy_enable_shortcuts = 1
-endif    
-
-if !exists('g:ozzy_max_num_files_to_open')
-    let g:ozzy_max_num_files_to_open = 0
-endif      
-
-if !exists('g:ozzy_ignore_case')
-    let g:ozzy_ignore_case = 0
-endif         
-
-if !exists('g:ozzy_most_frequent_flag')
-    let g:ozzy_most_frequent_flag = 'F'
-endif 
-
-if !exists('g:ozzy_most_recent_flag')
-    let g:ozzy_most_recent_flag = 'T'
-endif  
-
-if !exists('g:ozzy_context_flag')
-    let g:ozzy_context_flag = 'C'
-endif       
-
-if !exists('g:ozzy_freeze_off_flag')
-    let g:ozzy_freeze_off_flag = 'off'
-endif 
-
-if !exists('g:ozzy_freeze_on_flag')
-    let g:ozzy_freeze_on_flag = 'on'
-endif   
-
-" }}}
-
-
 python << END
 
-# ozzy init {{{                       
+# ozzy init {{{                        
 # ============================================================================
 
 # -*- coding: utf-8 -*-
@@ -97,7 +39,7 @@ PLUGIN_PATH = vim.eval("expand('<sfile>:h')")
 DB_NAME = 'ozzy'
 PATH = os.path.join(PLUGIN_PATH, DB_NAME)
 
-# database record
+# database record definition
 Record = namedtuple('Record', 'path frequency last_access')
 
 # current opened buffers
@@ -112,9 +54,39 @@ except:
     db = {}
     msg = 'ozzy log: cannot create the database into ' + PATH
     vim.command('echom "%s"' % msg)
+
 # }}}
 
-# settings management {{{      
+# set settings defaults {{{
+# ===================================================================
+
+settings = {
+    'mode' : 'most_frequent',
+    'freeze' : 0,
+    'ignore_ext' : 1,
+    'ignore' : [],
+    'keep' : 0,
+    'enable_shortcuts' : 1,
+    'max_num_files_to_open' : 0,
+    'open_files_recursively' : 1,
+    'ignore_case' : 0,
+    'most_frequent_flag' : 'F',
+    'most_recent_flag' : 'T',
+    'context_flag' : 'C',
+    'freeze_off_flag' : 'off',
+    'freeze_on_flag' : 'on',
+}
+
+for s in settings:
+    if vim.eval("!exists('g:ozzy_%s')" % s) == '1':
+        if isinstance(s, str):
+            vim.command("let g:ozzy_%s = %r" % (s, settings[s]))
+        else:
+            vim.command("let g:ozzy_%s = %s" % (s, settings[s]))
+
+# }}}
+
+# settings proxy functions {{{      
 # ===================================================================
 
 # set setting value
@@ -149,11 +121,12 @@ def setting(name, fmt=None):
 
 # }}}
 
-# check settings validity {{{                    
+# check settings validity {{{                      
 # ===================================================================
 
 if any((setting('mode') not in MODES,
        setting('max_num_files_to_open', fmt=int) < 0,
+       setting('open_files_recursively', fmt=int) < 0,
        setting('keep', fmt=int) < 0,
     )):
     msg = ("ozzy log: some setting has not been setted properly. "
@@ -162,74 +135,8 @@ if any((setting('mode') not in MODES,
 
 # }}}
 
-# inspector definition and creation {{{                
-class Inspector(object):
-    """Inspector definition.
-
-    Note about self.mapper:
-    When a user want to perform an action in the inspector buffer, he moves the
-    cursor on the line where the records of its interest is positionated and
-    the he perform the action action (pressing a specific key). The mapper
-    serves the purpose of mapping lines of the nuffer with records displayed on
-    them, so that the action is performed on the right record.
-    """
-    
-    def __init__(self):
-        self.name = 'ozzy_inspector'
-        self.order_by = ('frequency' if setting('mode') == 'most_frequent' 
-                         else 'last_access')  
-        self.reverse_order = True 
-        self.show_help = False
-        self.short_paths = True
-        self.cursor = [1, 0]
-        self.last_path_under_cursor = ''
-        self.mapper = {} # line to record mapper
-
-inspector = Inspector()
-# }}}
-
-# main function
-# ============================================================================
-
-# _update_curr_buffer {{{                  
-def _update_buffer(bufname=None):
-    """Update the attributes of the current opened file in the database.
-
-    This function is called whenever a buffer is read (on BufReadPost vim 
-    event).
-    """
-    if bufname is None:
-        bufname = vim.current.buffer.name  
-
-    if (setting('freeze', fmt=bool) 
-        or os.path.split(bufname)[1] == inspector.name):
-        return
-
-    _cond = not _match_patterns(bufname, setting('ignore')) 
-    if _cond and bufname not in buffers:
-        if bufname in db:
-            db[bufname] = Record(bufname, db[bufname].frequency + 1, dt.now())
-        else: 
-            db[bufname] = Record(bufname, 1, dt.now())
-
-        buffers.append(bufname) # 'buffers' is global
-# }}}
-
 # helper functions
 # ============================================================================
-
-# _update_inspector {{{               
-def _update_inspector(func):
-    def wrapper(*args, **kwargs):
-        _save_inspector_cursor_pos()
-        func(*args, **kwargs)
-        if not _inspector_is_current_buffer():
-            return
-        OzzyInspect()       
-        _insert_line_indicator()
-
-    return wrapper   
-# }}}  
 
 # _sync_db {{{
 def _sync_db(func):
@@ -280,8 +187,12 @@ def _find_path_match(target):
 
 # _find_path_endswith {{{
 def _find_path_endswith(target):
-    return [record for record in db.values()
-            if os.path.split(record.path)[0].endswith(target[:-1])] 
+    if setting('open_files_recursively', fmt=int):
+        return [record for record in db.values()
+                if target[:-1] in record.path.split('/')]
+    else:
+        return [record for record in db.values()
+                if os.path.split(record.path)[0].endswith(target[:-1])] 
 # }}} 
 
 # _find_path_contains {{{
@@ -318,8 +229,7 @@ def _find_matches_distance(target):
     return r
 # }}}
 
-# _remove_from_db_if {{{                
-@_sync_db
+# _remove_from_db_if {{{                 
 def _remove_from_db_if(func, getter):
     nremoved = 0
     for record in db.values():
@@ -368,32 +278,403 @@ def _print_current_extension_status():
         echom('Ozzy: consider extensions')
 # }}}
 
-# _save_inspector_cursor_pos {{{             
-def _save_inspector_cursor_pos():
-    global inspector
-    line, col = vim.current.window.cursor
-    inspector.cursor = [line, col]
-    if line in inspector.mapper:
-        inspector.last_path_under_cursor = inspector.mapper[line]
-# }}}
-
-# _inspector_is_current_buffer {{{                
-def _inspector_is_current_buffer():
-    bufname = vim.current.buffer.name
-    if bufname and bufname.endswith(inspector.name):
-        return True
-    else:
-        return False
-# }}}
-
 # _escape_spaces {{{
 def _escape_spaces(s):
     return s.replace(' ', '\ ')    
 # }}}
 
+# _listed_buffers {{{                
+def _listed_buffers():
+    return [bufname for bnr, bufname in enumerate(vim.buffers)
+            if int(vim.eval('buflisted(%d)' % (bnr + 1)))]
+# }}}
+
+# _clone_record {{{                          
+def _clone_record(rec, last_access=None, frequency=None):
+    """To clone a database record."""
+
+    new_last_access = last_access if last_access else rec.last_access
+    new_frequency = frequency if frequency else rec.frequency
+    return Record(rec.path, new_frequency, new_last_access) 
+# }}}                    
+
 # echom {{{                     
 def echom(msg):
     vim.command('echom "%s"' % msg)
+# }}}
+
+# environment consistency functions
+# ============================================================================
+
+# _remove_unlisted_buffers {{{               
+def _remove_unlisted_buffers(): 
+    listed_buf = [b.name for b in _listed_buffers()]
+    for b in buffers:  # buffers is global
+        if b not in listed_buf:
+            buffers.remove(b) 
+# }}}
+
+# _db_maintenance {{{                  
+def _db_maintenance():
+    """Remove deleted files or files not recently opened (see g:ozzy_keep)"""
+       
+    for r in db.values():
+        ozzy_keep = setting('keep', fmt=int)
+        cond1 = not os.path.exists(r.path)  # remove non exitent files
+        cond2 = (ozzy_keep > 0 and (dt.now() - r.last_access > 
+                                datetime.timedelta(days=ozzy_keep)))
+        if cond1 or cond2:
+            del db[r.path]            
+# }}}
+
+# _close {{{             
+def _close():
+    _db_maintenance()
+    db.close()
+# }}}
+
+# inspector
+# ============================================================================
+
+# Inspector definition {{{                      
+class Inspector(object):
+    """Inspector definition.
+
+    Note about self.mapper:
+    When a user want to perform an action in the inspector buffer, he moves the
+    cursor on the line where the records of its interest is positionated and
+    the he perform the action action (pressing a specific key). The mapper
+    serves the purpose of mapping lines of the nuffer with records displayed on
+    them, so that the action is performed on the right record.
+    """
+    
+# __init__ {{{                     
+    def __init__(self):
+        self.name = 'ozzy_inspector'
+        self.order_by = ('frequency' if setting('mode') == 'most_frequent' 
+                         else 'last_access')  
+        self.reverse_order = True 
+        self.show_help = False
+        self.short_paths = True
+        self.cursor = [1, 0]
+        self.last_path_under_cursor = ''
+        self.mapper = {} # line to record mapper
+# }}}
+
+# open {{{                     
+    def open(self, order_by=None, reverse_order=None, show_help=None, 
+             short_paths=None):
+        """To open the inspector."""
+        # update the inspector environment if something has changed
+        if order_by is not None:
+            self.order_by = order_by
+        if reverse_order is not None:
+            self.reverse_order = reverse_order
+        if show_help is not None:
+            self.show_help = show_help
+        if short_paths is not None:
+            self.short_paths = short_paths
+
+        vim.command("e %s" % self.name)
+
+        if vim.eval('&cursorline') != '0':
+            vim.command("setlocal cursorline")
+
+        vim.command("setlocal buftype=nofile")
+        vim.command("setlocal bufhidden=wipe")
+        vim.command("setlocal encoding=utf-8")
+        vim.command("setlocal noswapfile")
+        vim.command("setlocal noundofile")
+        vim.command("setlocal nobackup")
+        vim.command("setlocal nowrap")
+        vim.command("setlocal modifiable")
+        self.render()
+        vim.command("setlocal nomodifiable")
+
+        self.map_keys()
+# }}}
+
+# render {{{                     
+    def render(self):
+        """Render the Inspector content."""
+
+        self.mapper.clear()
+
+        records = sorted(db.values(), key=attrgetter(self.order_by),
+                        reverse=self.reverse_order) 
+
+        b = vim.current.buffer
+
+        freeze = 'on' if setting('freeze', fmt=bool) else 'off' 
+        ext = 'ignore' if setting('ignore_ext', fmt=bool) else 'consider'
+
+        b.append(' >> Ozzy Inspector')
+        b.append('')
+        b.append(' Ozzy status [mode: %s] [freeze: %s] [extensions: %s]'
+                % (setting('mode'), freeze, ext))
+        b.append('')
+
+        if self.show_help:
+            _help = [
+                ' - help',
+                '   ----------------------------------',
+                '   q : quit inspector',
+                '   ? : toggle help',
+                '   p : toggle between absolute and relative to home paths',
+                '   f : order records by frequency (default)',
+                '   a : order records by date and time',
+                '   r : reverse the current order',
+                '   o : open the file on the current line',
+                '   b : open in background the file on the current line',
+                '   + : increase the frequency of the file on the current line',
+                '   - : decrease the frequency of the file on the current line',
+                '   t : touch the file on the current line (set its ''last access attribute'' to now)',
+                '   dd : remove from the list the record under the cursor (or an entire selection)',
+                '        For additional power see OzzyRm, OzzyKeepLast and OzzyReset commands'
+            ]
+
+            for l in _help:
+                b.append(l)
+        else:
+            b.append(' ▪ type ? for help')
+
+        b.append('')
+        b.append(" last access          freq   file path")
+        b.append(" -------------------  -----  -------------------")
+
+        # print records
+
+        for r in records:
+            last_access = r.last_access.strftime('%Y-%m-%d %H:%M:%S')
+            if self.short_paths:
+                path = r.path.replace(os.path.expanduser('~'), '~')
+            else:
+                path = r.path
+            b.append(" %s %6s  %s" % (last_access, r.frequency, path))
+            self.mapper[len(b)] = r.path
+
+        # adjust cursor position
+
+        if not records: 
+            b.append('')
+            self.cursor = [len(b), 1]
+
+        elif self.cursor[0] not in self.mapper:
+            self.cursor = [min(self.mapper), 1]
+        else:
+            # prevent the cursor to be moved to a non-exitent position
+            if self.cursor[0] > len(b):
+                self.cursor = [len(b), 0]
+            else:
+                line = self.get_line_last_path()
+                if line:
+                    self.cursor[0] = line
+
+        vim.current.window.cursor = self.cursor
+
+        # draw line indicator 
+
+        self.insert_line_indicator()
+# }}}
+
+# update_rendering {{{                  
+    def update_rendering(self):
+        if not self.is_current_buffer():
+            return
+        self.open()       
+        self.insert_line_indicator()
+# }}}   
+
+# save_cursor_pos  {{{                   
+    def save_cursor_pos(self):
+        line, col = vim.current.window.cursor
+        self.cursor = [line, col]
+        if line in self.mapper:
+            self.last_path_under_cursor = self.mapper[line]
+# }}}
+
+# is_current_buffer {{{                        
+    def is_current_buffer(self):
+        bufname = vim.current.buffer.name
+        if bufname and bufname.endswith(self.name):
+            return True
+        else:
+            return False
+# }}}
+
+# get_line_last_path {{{                 
+    def get_line_last_path(self):
+        for line, path in self.mapper.items():
+            if path == self.last_path_under_cursor:
+                return line 
+# }}}
+
+# map_keys {{{                        
+    def map_keys(self):
+        """To map the keys neede to perform actions in the Inspector."""
+        mappings = (
+            'q :bd', 
+            'f :python insp.open(order_by="frequency")',
+            'a :python insp.open(order_by="last_access")',
+            'o :python insp.open_record_curr_line()',
+            'b :python insp.open_record_curr_line_bg()',
+            'dd :python insp.delete_selected_records()',
+            '+ :python insp.increment_freq_record_curr_line()',
+            '- :python insp.decrement_freq_record_curr_line()',
+            't :python insp.touch_record_curr_line()',
+            ('r :python insp.open(reverse_order=%r)' 
+             % (not self.reverse_order)),
+            ('p :python insp.open(short_paths=%r)'
+             % (not self.short_paths)),
+            ('? :python insp.open(show_help=%r)'
+             % (not self.show_help)),
+        )
+
+        for m in mappings:
+            vim.command('nnoremap <buffer> <silent> ' + m + '<CR>')
+
+        vim.command('vnoremap <buffer> <silent> '
+                    'dd :python insp.delete_selected_records()<CR>')
+# }}}
+
+# insert_line_indicator {{{                     
+    def insert_line_indicator(self):
+        """To insert a little arrow on the line where the cursor is positionated.
+        """
+        bufname = vim.current.buffer.name
+        cond1 = bufname and bufname.endswith(self.name)
+        cond2 = bufname and len(vim.current.buffer) > 1
+        if cond1 and cond2:
+            vim.command("setlocal modifiable")
+            curr_linenr, _ = vim.current.window.cursor
+            b = vim.current.buffer
+            indicator = '▸'
+
+            for linenr in self.mapper:
+                if linenr > 1 and linenr == curr_linenr: 
+                    if indicator not in b[linenr - 1]: 
+                        b[linenr - 1] = indicator + b[linenr - 1][1:] 
+                else:
+                    b[linenr - 1] = b[linenr - 1].replace(indicator, ' ')   
+            
+            vim.command("setlocal nomodifiable")
+# }}}
+
+# delete_selected_records {{{                    
+    @_sync_db
+    def delete_selected_records(self): 
+        """To delete the selected records from the database.
+
+        This function automatically detect if a selection has been made by the
+        user and if so all the selected records are deleted.
+        """
+        start = vim.current.buffer.mark('<')
+        end = vim.current.buffer.mark('>')
+        if start is None: # there is no range
+            path = self.get_path_on_line(vim.current.window.cursor[0])
+            if path:
+                del db[path]
+        else:
+            for line in range(start[0], end[0]+1):
+                path = self.get_path_on_line(line)
+                if path:
+                    del db[path]
+            vim.command('delmarks <>')
+
+        self.update_rendering()
+# }}}
+
+# touch_record_curr_line {{{         
+    @_sync_db
+    def touch_record_curr_line(self):
+        """Set the last access time of the file on the current line to now."""
+        path = self.get_path_on_line(vim.current.window.cursor[0])
+        if path:            
+            db[path] = _clone_record(db[path], last_access=dt.now())
+
+        self.update_rendering()
+# }}}
+
+# increment_freq_record_curr_line {{{                  
+    @_sync_db
+    def increment_freq_record_curr_line(self):
+        """Increment the frequency attribute of the file on the current line.
+        """
+        path = self.get_path_on_line(vim.current.window.cursor[0])
+        if path:            
+            db[path] = _clone_record(db[path], frequency=db[path].frequency+1)
+
+        self.update_rendering()
+# }}}
+
+# decrement_freq_record_curr_line {{{         
+    @_sync_db
+    def decrement_freq_record_curr_line(self):
+        """Decrement the frequency attribute of the file on the current line.
+        """
+        path = self.get_path_on_line(vim.current.window.cursor[0])
+        if path:            
+            if db[path].frequency > 1:
+                db[path] = _clone_record(db[path], frequency=db[path].frequency-1)
+
+        self.update_rendering()
+# }}}
+
+# open_record_curr_line {{{                      
+    def open_record_curr_line(self):
+        """To open the file on the current line."""
+        path = self.get_path_on_line(vim.current.window.cursor[0])
+        if path:
+            vim.command('e %s' % _escape_spaces(path))
+# }}}    
+    
+# open_record_curr_line_bg {{{                 
+    def open_record_curr_line_bg(self):
+        """To open in backgroung the file on the current line."""                 
+        path = self.get_path_on_line(vim.current.window.cursor[0])
+        if path:
+            vim.command('bad %s' % _escape_spaces(path))
+            _update_buffer(path)
+
+        self.update_rendering()
+# }}}   
+
+# get_path_on_line {{{                  
+    def get_path_on_line(self, line):
+        """To get the right path on the current line."""
+        if self.mapper:
+            return self.mapper.get(line, None) 
+# }}}
+
+# }}}
+
+insp = Inspector()
+
+# main function
+# ============================================================================
+
+# _update_buffer {{{                   
+def _update_buffer(bufname=None):
+    """Update the attributes of the current opened file in the database.
+
+    This function is called whenever a buffer is read (on BufReadPost vim 
+    event).
+    """
+    if bufname is None:
+        bufname = vim.current.buffer.name  
+
+    if (setting('freeze', fmt=bool) 
+        or os.path.split(bufname)[1] == insp.name):
+        return
+
+    _cond = not _match_patterns(bufname, setting('ignore')) 
+    if _cond and bufname not in buffers:
+        if bufname in db:
+            db[bufname] = Record(bufname, db[bufname].frequency + 1, dt.now())
+        else: 
+            db[bufname] = Record(bufname, 1, dt.now())
+
+        buffers.append(bufname) # 'buffers' is global
 # }}}
 
 # interface functions
@@ -460,7 +741,7 @@ def OzzyOpen(target):
 # }}}
 
 # OzzyRemove {{{               
-@_update_inspector
+@_sync_db
 def OzzyRemove(target):
     """To remove records from the database according to the given pattern."""
 
@@ -481,12 +762,15 @@ def OzzyRemove(target):
         nremoved = _remove_from_db_if(
             lambda path: os.path.split(path)[1] == t,
             attrgetter('path'))
+
+    insp.update_rendering()
     
     echom("Ozzy: %d files removed" % nremoved)
+
 # }}}
 
 # OzzyKeepLast {{{                
-@_update_inspector
+@_sync_db
 def OzzyKeepLast(args):  
     """Remove all records according to the given period of time.
     
@@ -520,12 +804,13 @@ def OzzyKeepLast(args):
                     (dt.now() - time) > datetime.timedelta(**delta),
                 attrgetter('last_access'))
 
+    insp.update_rendering()
+
     echom('Ozzy: %d files removed' % nremoved)
 # }}}
 
-# OzzyReset {{{                       
+# OzzyReset {{{                        
 @_sync_db
-@_update_inspector
 def OzzyReset():
     """To clear the entire database."""
 
@@ -536,45 +821,17 @@ def OzzyReset():
         echom('Ozzy: database successfully cleared!')
     else:
         echom('Ozzy: database untouched!')
+
+    insp.update_rendering()
 # }}}
 
 # OzzyInspect {{{                    
-def OzzyInspect(order_by=None, reverse_order=None, show_help=None,
-                short_paths=None):
+def OzzyInspect():
     """Open the database inpsector."""
-
-    global inspector
-
-    # update the inspector environment if something has changed
-    if order_by is not None:
-        inspector.order_by = order_by
-    if reverse_order is not None:
-        inspector.reverse_order = reverse_order
-    if show_help is not None:
-        inspector.show_help = show_help
-    if short_paths is not None:
-        inspector.short_paths = short_paths
-
-    vim.command("e %s" % inspector.name)
-
-    if vim.eval('&cursorline') != '0':
-        vim.command("setlocal cursorline")
-
-    vim.command("setlocal buftype=nofile")
-    vim.command("setlocal bufhidden=wipe")
-    vim.command("setlocal encoding=utf-8")
-    vim.command("setlocal noswapfile")
-    vim.command("setlocal noundofile")
-    vim.command("setlocal nobackup")
-    vim.command("setlocal nowrap")
-    vim.command("setlocal modifiable")
-    _render_inspector()
-    vim.command("setlocal nomodifiable")
-
-    _map_keys()
+    insp.open()     
 # }}}
 
-# OzzyAddDirectory {{{  
+# OzzyAddDirectory {{{               
 @_sync_db
 def AddDirectory(args):
 
@@ -651,341 +908,34 @@ def AddDirectory(args):
         echom('Ozzy: no files added!') 
 # }}}
 
-# ToggleMode {{{
-@_update_inspector
+# ToggleMode {{{            
 def ToggleMode():
     # update inspector attribute to reflect this change when its opened
-    global inspector
+    global insp
     curr_index = MODES.index(setting('mode'))
     if curr_index == len(MODES) - 1:
         next_mode = MODES[0]
     else:
         next_mode = MODES[curr_index + 1]
     let('mode', next_mode)
-    inspector.order_by = ('frequency' if setting('mode') == 'most_frequent' 
+    insp.order_by = ('frequency' if setting('mode') == 'most_frequent' 
                           else 'last_access')  
+    insp.update_rendering()
     _print_current_mode()
 # }}}
 
-# ToggleFreeze {{{             
-@_update_inspector
+# ToggleFreeze {{{              
 def ToggleFreeze():
     let('freeze', value=not setting('freeze', fmt=bool))
+    insp.update_rendering()
     _print_current_freeze_status()
 # }}}
 
 # ToggleExtension {{{                
-@_update_inspector
 def ToggleExtension():
     let('ignore_ext', value=not setting('ignore_ext', fmt=bool))
+    insp.update_rendering()
     _print_current_extension_status()
-# }}}
-
-# ozzy inspector
-# ============================================================================
-
-# _render_inspector {{{                
-def _render_inspector():
-    """Render the Inspector content."""
-
-    global inspector
-    inspector.mapper.clear()
-
-    records = sorted(db.values(), key=attrgetter(inspector.order_by),
-                     reverse=inspector.reverse_order) 
-
-    b = vim.current.buffer
-
-    freeze = 'on' if setting('freeze', fmt=bool) else 'off' 
-    ext = 'ignore' if setting('ignore_ext', fmt=bool) else 'consider'
-
-    b.append(' >> Ozzy Inspector')
-    b.append('')
-    b.append(' Ozzy status [mode: %s] [freeze: %s] [extensions: %s]'
-             % (setting('mode'), freeze, ext))
-    b.append('')
-
-    if inspector.show_help:
-        _help = [
-            ' - help',
-            '   ----------------------------------',
-            '   q : quit inspector',
-            '   ? : toggle help',
-            '   p : toggle between absolute and relative to home paths',
-            '   f : order records by frequency (default)',
-            '   a : order records by date and time',
-            '   r : reverse the current order',
-            '   o : open the file on the current line',
-            '   b : open in background the file on the current line',
-            '   + : increase the frequency of the file on the current line',
-            '   - : decrease the frequency of the file on the current line',
-            '   t : touch the file on the current line (set its ''last access attribute'' to now)',
-            '   dd : remove from the list the record under the cursor (or an entire selection)',
-            '        For additional power see OzzyRm, OzzyKeepLast and OzzyReset commands'
-        ]
-
-        for l in _help:
-            b.append(l)
-    else:
-        b.append(' ▪ type ? for help')
-
-    b.append('')
-    b.append(" last access          freq   file path")
-    b.append(" -------------------  -----  -------------------")
-
-    # print records
-
-    for r in records:
-        last_access = r.last_access.strftime('%Y-%m-%d %H:%M:%S')
-        if inspector.short_paths:
-            path = r.path.replace(os.path.expanduser('~'), '~')
-        else:
-            path = r.path
-        b.append(" %s %6s  %s" % (last_access, r.frequency, path))
-        inspector.mapper[len(b)] = r.path
-
-    # adjust cursor position
-
-    if not records: 
-        b.append('')
-        inspector.cursor = [len(b), 1]
-
-    elif inspector.cursor[0] not in inspector.mapper:
-        inspector.cursor = [min(inspector.mapper), 1]
-    else:
-        # prevent the cursor to be moved to a non-exitent position
-        if inspector.cursor[0] > len(b):
-            inspector.cursor = [len(b), 0]
-        else:
-            line = _get_line_last_path()
-            if line:
-                inspector.cursor[0] = line
-
-    vim.current.window.cursor = inspector.cursor
-
-    # draw line indicator 
-
-    _insert_line_indicator()
-# }}}
-
-# _get_line_last_path {{{
-def _get_line_last_path():
-    for line, path in inspector.mapper.items():
-        if path == inspector.last_path_under_cursor:
-            return line 
-# }}}
-
-# _map_keys {{{
-def _map_keys():
-    """To map the keys neede to perform actions in the Inspector."""
-
-    mappings = (
-        'q :bd', 
-
-        'f :python OzzyInspect(order_by="frequency")',
-
-        'a :python OzzyInspect(order_by="last_access")',
-
-        'o :python _open_record_curr_line()',
-
-        'b :python _open_record_curr_line_bg()',
-
-        'dd :python _delete_selected_records()',
-
-        '+ :python _increment_freq_record_curr_line()',
-
-        '- :python _decrement_freq_record_curr_line()',
-
-        't :python _touch_record_curr_line()',
-
-        ('r :python OzzyInspect(reverse_order=%r)' 
-         % (not inspector.reverse_order)),
-        
-        ('p :python OzzyInspect(short_paths=%r)'
-         % (not inspector.short_paths)),
-
-        ('? :python OzzyInspect(show_help=%r)'
-         % (not inspector.show_help)),
-    )
-
-    for m in mappings:
-        vim.command('nnoremap <buffer> <silent> ' + m + '<CR>')
-
-    vim.command('vnoremap <buffer> <silent> '
-                'dd :python _delete_selected_records()<CR>')
-# }}}
-
-# _insert_line_indicator {{{
-def _insert_line_indicator():
-    """To insert a little arrow on the line where the cursor is positionated.
-
-    This function is called only inside the Inspector.
-    """
-    
-    bufname = vim.current.buffer.name
-    cond1 = bufname and bufname.endswith(inspector.name)
-    cond2 = bufname and len(vim.current.buffer) > 1
-    if cond1 and cond2:
-        vim.command("setlocal modifiable")
-        curr_linenr, _ = vim.current.window.cursor
-        b = vim.current.buffer
-        indicator = '▸'
-
-        for linenr in inspector.mapper:
-            if linenr > 1 and linenr == curr_linenr: 
-                if indicator not in b[linenr - 1]: 
-                    b[linenr - 1] = indicator + b[linenr - 1][1:] 
-            else:
-                b[linenr - 1] = b[linenr - 1].replace(indicator, ' ')   
-        
-        vim.command("setlocal nomodifiable")
-# }}}
-
-# _delete_selected_records {{{            
-@_sync_db
-@_update_inspector 
-def _delete_selected_records(): 
-    """To delete the selected records from the database.
-
-    This function automatically detect if a selection has been made by the
-    user and if so all the selected records are deleted.
-    This function is active only when the inspector is opened.
-    """
-    start = vim.current.buffer.mark('<')
-    end = vim.current.buffer.mark('>')
-    if start is None: # there is no range
-        path = _get_path_on_line(vim.current.window.cursor[0])
-        if path:
-            del db[path]
-    else:
-        for line in range(start[0], end[0]+1):
-            path = _get_path_on_line(line)
-            if path:
-                del db[path]
-        vim.command('delmarks <>')
-# }}}
-
-# _touch_record_curr_line {{{               
-@_sync_db
-@_update_inspector
-def _touch_record_curr_line():
-    """Set the last access time of the file on the current line to now.
-    
-    This function is called only inside the Inspector.
-    """
-
-    path = _get_path_on_line(vim.current.window.cursor[0])
-    if path:            
-        db[path] = _clone_record(db[path], last_access=dt.now())
-# }}}
-
-# _increment_freq_record_curr_line {{{             
-@_sync_db
-@_update_inspector
-def _increment_freq_record_curr_line():
-    """Increment the frequency attribute of the file on the current line.
-    
-    This function is called only inside the Inspector.
-    """
-
-    path = _get_path_on_line(vim.current.window.cursor[0])
-    if path:            
-        db[path] = _clone_record(db[path], frequency=db[path].frequency+1)
-# }}}
-
-# _decrement_freq_record_curr_line {{{  
-@_sync_db
-@_update_inspector
-def _decrement_freq_record_curr_line():
-    """Decrement the frequency attribute of the file on the current line.
-    
-    This function is called only inside the Inspector.
-    """
-
-    path = _get_path_on_line(vim.current.window.cursor[0])
-    if path:            
-        if db[path].frequency > 1:
-            db[path] = _clone_record(db[path], frequency=db[path].frequency-1)
-# }}}
-
-# _open_record_curr_line {{{  
-def _open_record_curr_line():
-    """To open the file on the current line.
-
-    This function is called only inside the Inspector.
-    """
-
-    path = _get_path_on_line(vim.current.window.cursor[0])
-    if path:
-        vim.command('e %s' % _escape_spaces(path))
-# }}}    
- 
-# _open_record_curr_line_bg {{{ 
-@_update_inspector
-def _open_record_curr_line_bg():
-    """To open in backgroung the file on the current line.
-
-    This function is called only inside the Inspector.
-    """                 
-    path = _get_path_on_line(vim.current.window.cursor[0])
-    if path:
-        vim.command('bad %s' % _escape_spaces(path))
-        _update_buffer(path)
-# }}}   
-
-# _get_path_on_line {{{               
-def _get_path_on_line(line):
-    """To get the right path on the current line. 
-
-    See Inspector definition for more informations
-    """
-    if inspector.mapper:
-        return inspector.mapper.get(line, None) 
-# }}}
-
-# _clone_record {{{
-def _clone_record(rec, last_access=None, frequency=None):
-    """To clone a database record."""
-
-    new_last_access = last_access if last_access else rec.last_access
-    new_frequency = frequency if frequency else rec.frequency
-    return Record(rec.path, new_frequency, new_last_access) 
-# }}}                    
-
-# environment consistency functions
-# ============================================================================
-
-# _remove_unlisted_buffers {{{
-def _remove_unlisted_buffers(): 
-    listed_buf = [b.name for b in _listed_buffers()]
-    for b in buffers:  # buffers is global
-        if b not in listed_buf:
-            buffers.remove(b) 
-# }}}
-
-# _listed_buffers {{{
-def _listed_buffers():
-    return [bufname for bnr, bufname in enumerate(vim.buffers)
-            if int(vim.eval('buflisted(%d)' % (bnr + 1)))]
-# }}}
-
-# _db_maintenance {{{             
-def _db_maintenance():
-    """Remove deleted files or files not recently opened (see g:ozzy_keep)"""
-       
-    for r in db.values():
-        ozzy_keep = setting('keep', fmt=int)
-        cond1 = not os.path.exists(r.path)  # remove non exitent files
-        cond2 = (ozzy_keep > 0 and (dt.now() - r.last_access > 
-                                datetime.timedelta(days=ozzy_keep)))
-        if cond1 or cond2:
-            del db[r.path]            
-# }}}
-
-# _db_maintenance_and_close {{{             
-def _db_maintenance_and_close():
-    _db_maintenance()
-    db.close()
 # }}}
 
 END
@@ -995,21 +945,23 @@ function! Cmdline_completion(seed, cmdline, curpos)
 python << END
 seed = vim.eval('a:seed')
 
+def get_matches(records, func=lambda x: x):
+    return [r for r in records.values() 
+            if func(os.path.split(r.path)[1]).startswith(seed)]
+
 if setting('ignore_case', fmt=int):
-    matches = [r for r in db.values() 
-               if os.path.split(r.path)[1].lower().startswith(seed)]  
+    matches = get_matches(db, func=lambda x: x.lower())  
 else:
-    matches = [r for r in db.values() 
-               if os.path.split(r.path)[1].startswith(seed)]  
+    matches = get_matches(db)
 
 attr = ('frequency' if setting('mode') in ['most_frequent', 'context'] 
         else 'last_access')   
 completions = [os.path.split(r.path)[1] for r in
                 sorted(matches, key=attrgetter(attr), reverse=True)]
 
-vim.command('let s:completions = %r' % list(set(completions)))
+vim.command("let g:ozzy_completions = %r" % list(set(completions)))
 END
-    return s:completions
+    return g:ozzy_completions
 endfunction
 " }}}
 
@@ -1036,15 +988,15 @@ endfunction
 
 " }}}
 
-" autocommands {{{   
+" autocommands {{{                 
 " ============================================================================  
 
 augroup ozzy_plugin
     au!
-    au CursorMoved * python _insert_line_indicator()
+    au CursorMoved * python insp.insert_line_indicator()
     au BufEnter * python _remove_unlisted_buffers()
     au BufNewFile,BufReadPost * python _update_buffer()
-    au VimLeave * python _db_maintenance_and_close()
+    au VimLeave * python _close()
 augroup END 
 
 " }}}
@@ -1066,7 +1018,7 @@ command! OzzyToggleExtension python ToggleExtension()
 
 if g:ozzy_enable_shortcuts
     command! Oi python OzzyInspect()
-    command! -nargs=+ OAdd python AddDirectory(<q-args>)
+    command! -nargs=+ Oadd python AddDirectory(<q-args>)
     command! -nargs=1 -complete=customlist,Cmdline_completion O python OzzyOpen(<q-args>)
     command! -nargs=1 -complete=customlist,Cmdline_completion Orm python OzzyRemove(<q-args>)
     command! -nargs=+ Okeep python OzzyKeepLast(<q-args>)
