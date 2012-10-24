@@ -5,7 +5,7 @@
 
                                      ~
                               Reference Manual
-                                  v.0.6.0
+                                  v.0.6.1
 
 ==============================================================================
 CONTENTS                                                       *ozzy-contents*
@@ -455,6 +455,11 @@ default: 'freeze'
 
 ==============================================================================
 9. Changelog                                                  *ozzy-changelog*
+
+    * v0.6.1
+        - improved performance. 
+        - better cursor management inside the inspector.  
+        - fixed bug: inconsistent internal buffers management.
 
     * v0.6.0
        - now Ozzy opens all files recursively when using the Ozzy command with

@@ -1,6 +1,6 @@
 # Ozzy.vim
 
-**v0.6.0**
+**v0.6.1**
 
 
 Ozzy allows you to open almost any file from anywhere. Just give a file name
@@ -374,9 +374,14 @@ See the [Ozzy](#ozzy-command) command.
 
 ## Changelog
 
+* v0.6.1
+  - improved performance. 
+  - better cursor management inside the inspector.  
+  - fixed bug: inconsistent internal buffers management.
+
 * v0.6.0
   - now Ozzy opens all files recursively when using the Ozzy command with
-    a directory name as argument.
+    a directory name as argument
   - fixed bugs: error message using OzzyKeepLast command.  
 
 * v0.5
