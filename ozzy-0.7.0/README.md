@@ -1,6 +1,6 @@
 # Ozzy.vim
 
-**v0.6.1**
+**v0.7.0**
 
 
 Ozzy allows you to open almost any file from anywhere. Just give a file name
@@ -9,14 +9,10 @@ frequently used file or the most recently accessed one is picked for you, no
 more entire paths to digit or folder to cd into!
 
 
-## Installation
+## Requirements
 
-Install into `.vim/plugin/ozzy.vim` or better, use Pathogen.
-
-requirements:
-
-* vim 7.3 or later
-* vim compiled with python 2.6 or above
+* vim 7.3+
+* vim compiled with python 2.6+
 
 
 ## Usage
@@ -93,19 +89,21 @@ Below are listed all the keyboard keys you can use during an Inspector session
 and their relative actions:
 
 ```
-    key   action
+    key   meaning
     ---   --------------------------------------------
-    q     quit inspector
-    ?     toggle help
-    p     toggle between absolute and relative to home paths
-    f     order records by frequency
-    a     order records by date and time
-    r     reverse the current records order
-    o     open the file on the current line
-    +     increase the frequency of the file on the current line
-    -     decrease the frequency of the file on the current line
-    t     touch the file on the current line (set its last access attribute to now)
-    dd    remove from the list the record under the cursor (or an entire selection)
+    q     to quit inspector
+    ?     to toggle help
+    p     to toggle between absolute and relative to home paths
+    f     to order records by frequency
+    a     to order records by date and time
+    r     to reverse the current records order
+    o     to open the file on the current line
+    +     to increase the frequency of the file on the current line
+    *     as above but increases the frequency by 5
+    -     to decrease the frequency of the file on the current line
+    _     (underscore) as above but decreases the frequency by 5
+    t     to touch the file on the current line (set its last access attribute to now)
+    dd    to remove from the list the record under the cursor (or an entire selection)
 
     Note: The current line is the line where the cursor is positioned.
           To move up and down the records list use the classic hjkl keys.
@@ -149,7 +147,11 @@ shortcut: OAdd
 To add all files contained into the given `directory` (except those contained
 into hidden directories). The `directory` argument must be an absolute path
 but if you want to add all files contained into the current working directory
-you can use the `.` shortcut instead.
+you can use the `.` shortcut instead. To add the current parent directory use
+the `..` argument. Use the `...` argument to add the project root directory. 
+By default *Ozzy* assumes it is the one that contains a `.git`, `.hg` or a `.svn` 
+folder along the current working directory path. You can override this behavior
+setting the `g:ozzy_what_in_project_root` option).
 
 You can customize the default behavior of this command with the following options:
 
@@ -284,19 +286,6 @@ Below all the available modes:
 
 *default:* 'most_frequent'
 
-
--------------------------------------------------------------------------------
-<a name="ozzy_freeze" />
-**g:ozzy_freeze**                                              
-
-Set to 1 this variable and Ozzy will not add any new file to its database nor
-will update any existent file. If you want to freeze Ozzy only for a brief
-period of time during a vim session, you can toggle this option on and off 
-with the *OzzyToggleFreeze* command.
-
-*default:* 0
-
-
 -------------------------------------------------------------------------------
 <a name="ozzy_ignore_ext" />
 **g:ozzy_ignore_ext**         
@@ -311,7 +300,6 @@ frequently (or recently, according to the current mode), though, you can still
 specify the extnsion if you want.
 
 *default:* 1
-
 
 -------------------------------------------------------------------------------
 <a name="ozzy_ignore" />
@@ -344,7 +332,6 @@ all file paths that contains `<path>/`.
 
 *default:* []
 
-
 -------------------------------------------------------------------------------
 <a name="ozzy_keep" />
 **g:ozzy_keep**           
@@ -360,47 +347,13 @@ example:
 
 *default:* 0
 
-
 -------------------------------------------------------------------------------
-<a name="ozzy_max_num_files_to_open" />
-**g:ozzy_max_num_files_to_open**     
+<a name="ozzy_freeze" />
+**g:ozzy_freeze**                                              
 
-The max number of files that can be opened when you open multiple files with the 
-`Ozzy` command. If this option is set to `0` no limit on is applied.
-See the [Ozzy](#ozzy-command) command.
+Set to 1 this variable and Ozzy will not add any new file to its database nor
+will update any existent file. If you want to freeze Ozzy only for a brief
+period of time during a vim session, you can toggle this option on and off 
+with the *OzzyToggleFreeze* command.
 
-*default:* 0   
-
-
-## Changelog
-
-* v0.6.1
-  - improved performance. 
-  - better cursor management inside the inspector.  
-  - fixed bug: inconsistent internal buffers management.
-
-* v0.6.0
-  - now Ozzy opens all files recursively when using the Ozzy command with
-    a directory name as argument
-  - fixed bugs: error message using OzzyKeepLast command.  
-
-* v0.5
-  - added OzzyAddDirectory command to quickly add to the database all files contained into a given directory.
-  - added case insensitive files opening and command line completion.
-  - fixed minor bugs. 
-
-* v0.4
-  - improved command line completion.
-  - added new mode 'context'.
-  - fixed bugs: error when opening a file with spaces.
-
-* v0.3 
-  - added ability to open multiple files at once.
-  - fixed bugs.
-     
-* v0.2
-  - added command line completion.
-  - fixed bugs.
-     
-* v0.1
-  - first stable release.   
+*default:* 0    
