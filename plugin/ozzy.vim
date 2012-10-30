@@ -4,8 +4,8 @@
 " Mantainer: Giacomo Comitti (https://github.com/gcmt)
 " Url: https://github.com/gcmt/ozzy.vim
 " License: MIT
-" Version: 0.7.0
-" Last Changed: 28 Oct 2012
+" Version: 0.7.1
+" Last Changed: 30 Oct 2012
 " ============================================================================
 
 
@@ -25,12 +25,13 @@ python << END
 # imports --------------------------------------------------------------- {{{
 import vim
 import os
+import math
 import sqlite3
 import datetime
-import bisect
+import itertools
 from datetime import datetime as dt
 from collections import namedtuple
-from operator import attrgetter
+from operator import attrgetter, itemgetter
 from heapq import nlargest
 # }}}
 
@@ -41,6 +42,7 @@ class Utils(object):
 
     @staticmethod
     def escape_spaces(s): # {{{
+        """To escape spaces from filenames."""
         return s.replace(' ', '\ ')
     # }}}
 
@@ -55,7 +57,7 @@ class Utils(object):
     # }}}
 
     @staticmethod
-    def listed_buffers(): # FIX? {{{
+    def listed_buffers(): # {{{
         """Tor return a list of all vim listed buffers."""
         return [b.name.decode('utf-8') for b in vim.buffers
                 if b.name and vim.eval("buflisted('{0}')".format(
@@ -64,10 +66,16 @@ class Utils(object):
 
     @staticmethod
     def remove_dupes(lst): # {{{
-        """To remove duplicates in a list mantaining the order."""
+        """To remove duplicates from a list mantaining the order."""
         seen = set()
         seen_add = seen.add
         return [x for x in lst if x not in seen and not seen_add(x)]
+    # }}}
+
+    @staticmethod
+    def seconds(td): # {{{
+        """To return total seconds of a datetime.timedelta object."""
+        return (td.seconds + td.days * 24 * 3600)
     # }}}
 
     ## settings proxy functions
@@ -105,12 +113,11 @@ class Utils(object):
 
     ## main helpers
 
-    @staticmethod
-    def sort_by_distance(records, reverse=False): # {{{
-        """To return all matches sorted by distence relative to the cwd."""
+    @ staticmethod
+    def decorate_with_distance(records): # {{{
+        """To decorate the records with their relative distance to the cwd."""
         cwd = vim.eval('getcwd()').decode('utf8')
         sep = os.path.sep
-        ordered = []
 
         for rec in records:
             if rec.path.startswith(cwd):
@@ -128,17 +135,27 @@ class Utils(object):
 
                 x = (len(cwd_lst) + len(path_lst), rec)
 
-            ordered.insert(bisect.bisect(ordered, x), x)
+            yield x # x is a tuple (distance, record)
+    # }}}
 
-            if not reverse:
-                ordered.sort(reverse=True)
+    @staticmethod
+    def sort_by_distance(records, reverse=False): # {{{
+        """To return all records sorted by distance relative to the cwd.
 
-        return [x[1] for x in ordered]
+           Records are grouped by their relative distance (a list of lists is
+           returned) in order to allow further ordering.
+        """
+        # r = [(distance, record), ...]
+        r = list(Utils.decorate_with_distance(records))
+        r.sort(key=itemgetter(0), reverse=reverse) # sort by distance
+        groups = itertools.groupby(r, key=itemgetter(0)) # group by distance
+        return [map(itemgetter(1), g) for k, g in groups] # discard keys
     # }}}
 
     @staticmethod
     def find_by_fname(records, target): # {{{
-        matches = []
+        """To find matches according to the given target and global options.
+        """
         for r in records:
             fname = os.path.split(r.path)[1]
             fname_no_ext = os.path.splitext(fname)[0]
@@ -152,9 +169,7 @@ class Utils(object):
             cond2 = (Utils.setting('ignore_ext', fmt=bool)
                      and fname_no_ext == target)
             if cond1 or cond2:
-                matches.append(r)
-
-        return matches
+                yield r
     # }}}
 
     @staticmethod
@@ -178,7 +193,6 @@ class Utils(object):
 
     @staticmethod
     def find_by_path(records, target): # {{{
-        matches = []
         for r in records:
             if Utils.setting('ignore_case', fmt=int):
                 path = r.path.lower()
@@ -190,9 +204,7 @@ class Utils(object):
             cond2 = (Utils.setting('ignore_ext', fmt=bool)
                      and path_no_ext.endswith(target))
             if cond1 or cond2:
-                matches.append(r)
-
-        return matches
+                yield r
     # }}}
 
     @staticmethod
@@ -206,11 +218,56 @@ class Utils(object):
     # }}}
 
     @staticmethod
+    def sort_groups_by(groups, attr, flatten=False, reverse=True): # {{{
+        """To sort the given gropus according to the given attribute.
+
+           The 'groups' parameter is expected to be a list of lists (groups).
+        """
+        sorted_groups = [sorted(g, key=attrgetter(attr), reverse=reverse)
+                         for g in groups]
+        if flatten:
+            return list(itertools.chain.from_iterable(sorted_groups))
+        else:
+            return sorted_groups
+    # }}}
+
+    @staticmethod
+    def group_by_path(paths, path): # {{{
+        """To group records according to the given path.
+
+        Example:
+        >>> l = ['a/b', 'a/c/b', 'a/b/c', 'a/c/b/h']
+        >>> group_by_path(l, 'b') # all input is assumend to contain 'b'
+        [['a/b', 'a/b/c'], ['a/c/b', 'a/c/b/h']]
+        """
+        sep = os.path.sep
+
+        def keyfunc(r):
+            l = r.path.split(sep)
+            return sep.join(l[:l.index(path.strip(sep))])
+
+        groups = itertools.groupby(sorted(paths, key=attrgetter('path')),
+                                   key=keyfunc)
+        return [list(g) for key, g in groups]
+    # }}}
+
+    @staticmethod
+    def decorate_groups_mean(groups, ref): # {{{
+        """pivot is a datetime object."""
+
+        def mean(values):
+            return sum(values) / len(values)
+
+        return [(mean(map(lambda x: Utils.seconds(ref-x.last_access), g)), g)
+                for g in groups]
+    # }}}
+
+    @staticmethod
     def find_project_root(path, what_in_root=None): # {{{
         """To find the current project root.
 
-        The project root is the first one along the current working directory
-        path who contains any of the file or folders listed in the
+        The project root is the first directory along the current working
+        directory path who contains any of the file or folders listed in the
         'what_in_root' list.
         """
         if what_in_root is None:
@@ -247,6 +304,13 @@ class DBProxy(object):
     """Database proxy."""
 
     def __init__(self, path): # {{{
+        self.schema = ("""
+            CREATE TABLE ozzy (
+                path string primary key,
+                frequency integer not null,
+                last_access timestamp not null)
+            """)
+
         missing_db = not os.path.exists(path)
         self.conn = sqlite3.connect(path,
             detect_types=sqlite3.PARSE_DECLTYPES)
@@ -254,49 +318,43 @@ class DBProxy(object):
         if missing_db:
             self.init_db()
 
-        self.Record = namedtuple('Record', 'path frequency last_access')
+        # be aware of fields names: python keywords are forbidden
+        Row = namedtuple('Row', "path frequency last_access")
+        self.conn.row_factory = lambda cur, fields: Row(*fields)
     # }}}
 
     def __contains__(self, path): # {{{
         """To implement the 'in' operator behavior."""
-        cur = self.conn.cursor()
-        r = cur.execute("SELECT * FROM ozzy WHERE path=?", (path,)).fetchone()
+        query = "SELECT * FROM ozzy WHERE path=? LIMIT 1"
+        r = self.conn.execute(query, (path,)).fetchone()
         return True if r else False
     # }}}
 
     def init_db(self): # {{{
         """Initialize the main database table."""
         cur = self.conn.cursor()
-        cur.execute("drop table if exists ozzy")
-        cur.execute("create table ozzy ("
-                    "path string primary key,"
-                    "frequency integer not null,"
-                    "last_access timestamp not null)")
+        cur.execute(self.schema)
         self.conn.commit()
     # }}}
 
     def all(self): # {{{
         """To get all database records."""
-        cur = self.conn.cursor()
-        for r in cur.execute("SELECT * FROM ozzy").fetchall():
-            yield self.Record(*r)
+        for row in self.conn.execute("SELECT * FROM ozzy").fetchall():
+            yield row
     # }}}
 
     def get(self, path): # {{{
         """To get a specific record given its path."""
-        cur = self.conn.cursor()
-        r = cur.execute("SELECT * FROM ozzy WHERE path=?", (path,)).fetchone()
-        if r:
-            return self.Record(*r)
+        sql = "SELECT * FROM ozzy WHERE path=?"
+        return self.conn.execute(sql, (path,)).fetchone()
     # }}}
 
     def add(self, path, frequency, last_access): # {{{
         """To add a new record."""
-        cur = self.conn.cursor()
         try:
-            cur.execute("INSERT INTO ozzy VALUES (?, ?, ?)",
-                        (path, frequency, last_access))
-        except: # in case of an attempting to add an existing path
+            sql = "INSERT INTO ozzy VALUES (?, ?, ?)"
+            self.conn.execute(sql, (path, frequency, last_access))
+        except:
             pass
         else:
             self.conn.commit()
@@ -304,46 +362,51 @@ class DBProxy(object):
 
     def add_many(self, paths, frequency, last_access): # {{{
         """To add a bunch of new records at once."""
-        cur = self.conn.cursor()
-        for path in paths:
-            try:
-                cur.execute("INSERT INTO ozzy VALUES (?, ?, ?)",
-                            (path, frequency, last_access))
-            except:
-                pass
+        try:
+            sql = "INSERT INTO ozzy VALUES (?, ?, ?)"
+            self.conn.executemany(sql,
+                [(path, frequency, last_access) for path in paths])
+        except:
+            pass
+
         self.conn.commit()
     # }}}
 
     def update(self, path, frequency=None, last_access=None): # {{{
         """To update attributes of an existing record."""
-        cur = self.conn.cursor()
         if frequency and not last_access:
-            cur.execute(
-                "UPDATE ozzy SET frequency=frequency+? WHERE path=?",
-                (frequency, path))
+            sql = "UPDATE ozzy SET frequency=frequency+? WHERE path=?"
+            self.conn.execute(sql, (frequency, path))
 
         elif last_access and not frequency:
-            cur.execute(
-                "UPDATE ozzy SET last_access=? WHERE path=?",
-                (last_access, path))
+            sql = "UPDATE ozzy SET last_access=? WHERE path=?"
+            self.conn.execute(sql, (last_access, path))
 
         elif frequency and last_access:
-            cur.execute(
-                "UPDATE ozzy SET frequency=frequency+?, last_access=? "
-                "WHERE path=?", (frequency, last_access, path))
+            sql = "UPDATE ozzy SET frequency=frequency+?, last_access=? WHERE path=?"
+            self.conn.execute(sql, (frequency, last_access, path))
 
         self.conn.commit()
     # }}}
 
     def delete(self, path): # {{{
         """To delete a record given its path."""
-        cur = self.conn.cursor()
-        cur.execute("DELETE FROM ozzy WHERE path=?", (path,))
+        sql = "DELETE FROM ozzy WHERE path=?"
+        self.conn.execute(sql, (path,))
+        self.conn.commit()
+    # }}}
+
+    def delete_many(self, paths): # {{{
+        """To delete a bunch of records given their paths."""
+        sql = "DELETE FROM ozzy WHERE path=?"
+        self.conn.executemany(sql, [(path,) for path in paths])
         self.conn.commit()
     # }}}
 
     def delete_all(self): # {{{
         """To delete all records from the database."""
+        self.conn.execute("DROP TABLE IF EXISTS ozzy")
+        self.conn.commit()
         self.init_db()
     # }}}
 
@@ -397,7 +460,8 @@ class Inspector(object):
         if short_paths is not None:
             self.short_paths = short_paths
 
-        vim.command(u"e {0}".format(self.name))
+        # create the inspector buffer
+        vim.command("e {0}".format(self.name))
         vim.command("let b:ozzy_inspector_opened=1")
         vim.command("setlocal buftype=nofile")
         vim.command("setlocal bufhidden=wipe")
@@ -416,20 +480,19 @@ class Inspector(object):
         """Render the inspector buffer content."""
         self.mapper.clear()
         b = vim.current.buffer
-        freeze = u'on' if Utils.setting('freeze', fmt=bool) else u'off'
-        ext = u'ignore' if Utils.setting('ignore_ext', fmt=bool) else u'consider'
 
         if self.order_by == u'context':
-            records = Utils.sort_by_distance(self.ozzy.db.all(),
-                                             reverse=self.reverse_order)
+            groups = Utils.sort_by_distance(self.ozzy.db.all(),
+                            reverse=not self.reverse_order)
+
+            records = Utils.sort_groups_by(groups, 'last_access',
+                            flatten=True, reverse=not self.reverse_order)
         else:
-            records = sorted(self.ozzy.db.all(), key=attrgetter(self.order_by),
+            records = sorted(self.ozzy.db.all(),
+                             key=attrgetter(self.order_by),
                              reverse=self.reverse_order)
 
         b.append(' >> Ozzy Inspector')
-        b.append('')
-        b.append(' Ozzy status [mode: {0}] [freeze: {1}] [extensions: {2}]'
-                 .format(Utils.setting('mode'), freeze, ext))
         b.append('')
 
         if self.show_help:
@@ -459,18 +522,50 @@ class Inspector(object):
 
         # print records
 
-        b.append('')
-        b.append(" last access          freq   file path")
-        b.append(" -------------------  -----  -------------------")
+        mode = Utils.setting('mode')
+        ext = 'ignore' if Utils.setting('ignore_ext', fmt=bool) else 'consider'
+        freeze = 'on' if Utils.setting('freeze', fmt=bool) else 'off'
 
-        for r in records:
+        def _make_order(otype, msg_rev, msg_norev):
+            d = {'type': otype}
+            if self.reverse_order:
+                d.update({'rev': msg_rev})
+            else:
+                d.update({'rev': msg_norev})
+            return d
+
+        if self.order_by == u'context':
+            order = _make_order('distance', 'closest', 'farthest')
+        elif self.order_by == u'frequency':
+            order = _make_order('frequency', 'most frequent', 'least frequent')
+        elif self.order_by == u'last_access':
+            order = _make_order('access time', 'most recent', 'least recent')
+
+        b.append('')
+        b.append(' ozzy status = mode:{0} | freeze:{1} | extensions:{2}'
+                 .format(mode, freeze, ext))
+
+        b.append(' order = {type}, {rev} first'.format(**order))
+
+        cwd = vim.eval('getcwd()')
+        if self.short_paths:
+            cwd = cwd.replace(os.path.expanduser('~'), '~')
+        b.append(' cwd = {0}'.format(cwd))
+
+        b.append('')
+        b.append(" last access          freq   dist   file path")
+        b.append(" -------------------  -----  -----  ---------------")
+
+        for dist, r in Utils.decorate_with_distance(records):
             last_access = r.last_access.strftime('%Y-%m-%d %H:%M:%S')
             if self.short_paths:
                 path = r.path.replace(os.path.expanduser('~'), '~')
             else:
                 path = r.path
-            b.append(" {0} {1:>6}  {2}"
-                     .format(last_access, r.frequency, path.encode('utf8')))
+            b.append(" {0} {1:>6} {2:>6}  {3}".format(last_access, r.frequency,
+                                               dist, path.encode('utf8')))
+
+            # map the record path to the line it has been printed
             self.mapper[len(b)] = r.path
 
         # adjust cursor position
@@ -479,12 +574,14 @@ class Inspector(object):
             b.append('')
             self.cursor = [len(b), 1]
         elif self.cursor[0] not in self.mapper:
+            # move the cursor to the forst position of the records list
             self.cursor = [min(self.mapper), 1]
         else:
-            # prevent the cursor to be moved to a non-exitent position
+            # prevent the cursor to be moved to a non-existent position
             if self.cursor[0] > len(b):
                 self.cursor = [len(b), 0]
             else:
+                # follow the previous modified record
                 line = self.get_line_last_path()
                 if line:
                     self.cursor[0] = line
@@ -495,7 +592,7 @@ class Inspector(object):
     # }}}
 
     def map_keys(self): # {{{
-        """To map the inpector buffer keys."""
+        """To create mappings for the inpector buffer."""
         mappings = (
             'q :bd',
             'f :python ozzy.insp.open(order_by=u"frequency")',
@@ -520,7 +617,7 @@ class Inspector(object):
         for m in mappings:
             vim.command('nnoremap <buffer> <silent> ' + m + '<CR>')
 
-        vim.command('vnoremap <script> <buffer> <silent> '
+        vim.command('vnoremap <buffer> <silent> '
                     'dd :python ozzy.insp.delete_records()<CR>')
     # }}}
 
@@ -592,7 +689,7 @@ class Inspector(object):
     def delete_records(self): # {{{
         """To delete the selected records from the database.
 
-        This function automatically detect if a selection has been made by the
+        This function automatically detects if a selection has been made by the
         user and if so all the selected records are deleted.
         """
         start = vim.current.buffer.mark('<')
@@ -602,10 +699,10 @@ class Inspector(object):
             if path:
                 self.ozzy.db.delete(path)
         else:
-            for line in range(start[0], end[0]+1):
-                path = self.get_path_on_line(line)
-                if path:
-                    self.ozzy.db.delete(path)
+            paths = itertools.ifilter(None,
+                        [self.get_path_on_line(line)
+                         for line in xrange(start[0], end[0]+1)])
+            self.ozzy.db.delete_many(paths)
             vim.command('delmarks <>')
 
         self.update_rendering()
@@ -626,6 +723,7 @@ class Inspector(object):
         path = self.get_path_on_line()
         if path:
             if n < 0 and self.ozzy.db.get(path).frequency <= abs(n):
+                # frequency cannot be setted to a value <= 0
                 return
             else:
                 self.ozzy.db.update(path, frequency=n)
@@ -711,12 +809,9 @@ class Ozzy(object):
     def remove_from_db_if(self, func, getter): # {{{
         """To remove records from the database according to the 'func'
         function."""
-        nremoved = 0
-        for record in self.db.all():
-            if func(getter(record)):
-                self.db.delete(record.path)
-                nremoved += 1
-        return nremoved
+        l = [r.path for r in self.db.all() if func(getter(r))]
+        self.db.delete_many(l)
+        return len(l)
     # }}}
 
     def print_mode(self): # {{{
@@ -739,13 +834,16 @@ class Ozzy(object):
 
     def db_maintenance(self): # {{{
         """To remove deleted files or files not recently opened."""
+        l = []
         for r in self.db.all():
             ozzy_keep = Utils.setting('keep', fmt=int)
             cond1 = not os.path.exists(r.path)  # remove non exitent files
             cond2 = (ozzy_keep > 0 and (dt.now() - r.last_access >
                                         datetime.timedelta(days=ozzy_keep)))
             if cond1 or cond2:
-                self.db.delete(r.path)
+                l.append(r.path)
+
+        self.db.delete_many(l)
     # }}}
 
     def remove_unlisted_buffers(self): # {{{
@@ -761,6 +859,18 @@ class Ozzy(object):
 
         This method is called whenever a buffer is read (BufNewFile and
         BufReadPost vim events).
+
+        TODO: (lazy updates) using collections.Counter or a simple dictionary
+        to keep track of buffers updates could prehaps improves the overall
+        performaces?
+
+        A Counter/dict object is keeped in memory. Two approaches may be
+        viable in order to update the database:
+        1. every time an Ozzy command is executed
+        2. when the counter or dict size reach a certain size
+
+        pitfalls:
+        1. how to deal with last access time when using Counter?
         """
         if Utils.setting('freeze', fmt=bool):
             return
@@ -793,27 +903,35 @@ class Ozzy(object):
     def OzzyOpen(self, target): # {{{
         """Open the given file according to the current mode.
 
-        If a directory name is given, all files in that direcotory are opened.
+        If a directory name is given, all files in that directory are opened.
         """
         target = target.strip().decode('utf8')
-        attr = (u'frequency' 
-                if Utils.setting('mode') in [u'most_frequent', u'context']
-                else u'last_access')
+        attr = (u'last_access'
+                if Utils.setting('mode') in [u'most_recent', u'context']
+                else u'frequency')
 
         if target.endswith(os.path.sep):
             # open all files in the given directory
             matches = Utils.find_paths_in_directory(self.db.all(), target)
 
+            groups = Utils.group_by_path(matches, target)
+
+            # reduce each group to the standard deviation respect to the
+            # 'last_access' attribute ??
+            groups_std = Utils.decorate_groups_mean(groups, dt.now())
+
+            m = min(groups_std, key=itemgetter(0))[1]
+
             n = Utils.setting('max_num_files_to_open', fmt=int)
             if n > 0:
-                paths = [r.path for r in nlargest(n, matches, 
-                                                  key=attrgetter(attr))]
+                paths = [r.path for r in
+                         nlargest(n, m, key=attrgetter(attr))]
             else:
-                paths =  [r.path for r in matches]
+                paths =  [r.path for r in m]
 
             if matches:
                 vim.command("args {0}".format(
-                    ' '.join(Utils.escape_spaces(p).encode('utf8') 
+                    ' '.join(Utils.escape_spaces(p).encode('utf8')
                              for p in paths)))
                 Utils.feedback(u'{0} files opened'.format(len(paths)))
             else:
@@ -822,19 +940,24 @@ class Ozzy(object):
             # open a single file
 
             if os.path.sep in target:
-                matches = Utils.find_by_path(self.db.all(), target)
+                matches = list(Utils.find_by_path(self.db.all(), target))
+
             elif Utils.setting('mode') == u'context':
-                matches = Utils.sort_by_distance(
-                            Utils.find_by_fname(self.db.all(), target),
-                            reverse=True)
+                # sort and group records by distance
+                groups = Utils.sort_by_distance(
+                            Utils.find_by_fname(self.db.all(), target))
+
+                matches = Utils.sort_groups_by(groups, 'last_access',
+                                               flatten=True)
                 if matches:
                     vim.command('e {0}'.format(
                         Utils.escape_spaces(matches[0].path).encode('utf8')))
                 else:
                     Utils.feedback(u'nothing found')
                 return
+
             else:
-                matches = Utils.find_by_fname(self.db.all(), target)
+                matches = list(Utils.find_by_fname(self.db.all(), target))
 
             if matches:
                 record = max(matches, key=attrgetter(attr))
@@ -947,7 +1070,7 @@ class Ozzy(object):
         if opt:
             ignore = opt.strip(',').split(',')
         else:
-            ignore = [] 
+            ignore = []
 
         add_hidden_dirs = Utils.get_cmdline_opt('-h', arglist, expect_arg=False)
 
@@ -963,8 +1086,8 @@ class Ozzy(object):
             if opt:
                 what_in_root = opt.strip(',').split(',')
             else:
-                what_in_root = Utils.setting('what_in_project_root')  
-            
+                what_in_root = Utils.setting('what_in_project_root')
+
             topdir = Utils.find_project_root(vim.eval('getcwd()'), what_in_root)
 
             if not topdir:
@@ -993,18 +1116,20 @@ class Ozzy(object):
 
                                 paths.append(path)
 
-            msg = ("input('I''m going to add %d files, are you sure? (yN): ')"
-                % len(paths))
-            answer = vim.eval(msg)
-            vim.command('redraw') # to clear the command line
-            if answer in ['y', 'Y', 'yes', 'Yes']:
-                self.db.add_many(paths, 1, dt.now())
-                Utils.feedback('{0} files successfully added!'.format(len(paths)))
+            if paths:
+                msg = ("input('%d files found, are you sure? (yN): ')"
+                    % len(paths))
+                answer = vim.eval(msg)
+                vim.command('redraw') # to clear the command line
+                if answer in ['y', 'Y', 'yes', 'Yes']:
+                    self.db.add_many(paths, 1, dt.now())
+                    Utils.feedback('{0} files successfully added!'.format(len(paths)))
+                else:
+                    Utils.feedback(u'nothing added!')
+
+                self.insp.update_rendering()
             else:
-                Utils.feedback(u'no files added!')
-
-            self.insp.update_rendering()
-
+                Utils.feedback(u'nothing found')
         else:
             Utils.feedback(u'directory not found')
 
@@ -1050,29 +1175,38 @@ END
 
 function! Cmdline_completion(seed, cmdline, curpos)
 python << END
-seed = vim.eval('a:seed')
+seed = vim.eval('a:seed').decode('utf-8')
 
-def get_matches(func=lambda x: x):
+def _matches(seed, func=lambda x: x):
     return [r for r in ozzy.db.all()
-            if func(os.path.split(r.path)[1]).startswith(seed.lower())]
+            if func(os.path.split(r.path)[1]).startswith(func(seed))]
 
 if Utils.setting('ignore_case', fmt=int):
-    matches = get_matches(func=lambda x: x.lower())
+    matches = _matches(seed, func=lambda x: x.lower())
 else:
-    matches = get_matches()
+    matches = _matches(seed)
 
 if Utils.setting('mode') == u'context':
-    completions = [os.path.split(r.path)[1] for r in
-                   Utils.sort_by_distance(matches)]
-else:
-    completions = [os.path.split(r.path)[1] for r in
-                   sorted(matches, key=attrgetter(u'last_access'),
-                          reverse=True)]
+    # sort and group records by distance
+    groups = Utils.sort_by_distance(matches)
+    lst = Utils.sort_groups_by(groups, 'last_access', flatten=True)
+    compl = [os.path.split(r.path)[1] for r in lst] # get only filenames
 
-# FIX: find a way to do this directly in python: it seems that when making 
+    # move the current buffer name to the end of the list if present
+    bufname = vim.current.buffer.name
+    if bufname:
+        fname = os.path.split(bufname.decode('utf-8'))[1]
+        if fname in compl:
+            compl.append(compl.pop(compl.index(fname)))
+else:
+    compl= [os.path.split(r.path)[1] for r in
+            sorted(matches, key=attrgetter(u'last_access'),
+                   reverse=True)]
+
+# FIX: find a way to do this directly in python: it seems that when making
 # a list of filenames, cannot be printed properly
 vim.command("let g:ozzy_completions = []")
-for c in Utils.remove_dupes(completions):
+for c in Utils.remove_dupes(compl):
     vim.eval("add(g:ozzy_completions, '{0}')"
              .format(c.encode('utf-8')))
 

@@ -5,7 +5,7 @@
 
                                      ~
                               Reference Manual
-                                   v0.7.0
+                                  v.0.7.1
 
 ==============================================================================
 CONTENTS                                                       *ozzy-contents*
@@ -110,6 +110,7 @@ and their relative actions:
     p     to toggle between absolute and relative to home paths
     f     to order records by frequency
     a     to order records by date and time
+    c     order records by distance relative to the current working directory
     r     to reverse the current records order
     o     to open the file on the current line
     +     to increase the frequency of the file on the current line
@@ -474,7 +475,13 @@ default: 'freeze'
 
 ==============================================================================
 9. Changelog                                                  *ozzy-changelog*
- 
+
+v0.7.1
+  * added useful information in the inspector buffer.
+  * more intelligent command line completion.
+  * in 'by distance' ordering files that have te same relative distance are
+    ordered by last access time.  
+
 v0.7.0
   * better memory management.  
   * support for filenames that contain non english characters.
@@ -483,6 +490,8 @@ v0.7.0
   * new 'c', '*' and '_' mappings in the Inspector buffer.
   * command line completions can be ordered by relative distance to the cwd.
   * minor bug fixes.
+  * backward incompatibility issue: the database managed by this version of
+    Ozzy is no more compatible with databases created in previous versions. 
 
 v0.6.1
   * improved performances. 
