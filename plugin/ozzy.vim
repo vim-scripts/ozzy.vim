@@ -4,8 +4,8 @@
 " Mantainer: Giacomo Comitti (https://github.com/gcmt)
 " Url: https://github.com/gcmt/ozzy.vim
 " License: MIT
-" Version: 0.7.1
-" Last Changed: 30 Oct 2012
+" Version: 0.7.2
+" Last Changed: 31 Oct 2012
 " ============================================================================
 
 
@@ -28,11 +28,11 @@ import os
 import math
 import sqlite3
 import datetime
-import itertools
-from datetime import datetime as dt
-from collections import namedtuple
-from operator import attrgetter, itemgetter
 from heapq import nlargest
+from collections import namedtuple
+from datetime import datetime as dt
+from itertools import groupby, chain, ifilter
+from operator import attrgetter, itemgetter, methodcaller
 # }}}
 
 # Utils ----------------------------------------------------------------- {{{
@@ -111,6 +111,13 @@ class Utils(object):
                 return None
     # }}}
 
+    @staticmethod
+    def is_sublist(sublst, lst): # {{{
+        n = len(sublst)
+        return any((sublst == lst[i:i+n]) 
+                    for i in xrange(len(lst) - n+1)) 
+    # }}}
+
     ## main helpers
 
     @ staticmethod
@@ -148,7 +155,7 @@ class Utils(object):
         # r = [(distance, record), ...]
         r = list(Utils.decorate_with_distance(records))
         r.sort(key=itemgetter(0), reverse=reverse) # sort by distance
-        groups = itertools.groupby(r, key=itemgetter(0)) # group by distance
+        groups = groupby(r, key=itemgetter(0)) # group by distance
         return [map(itemgetter(1), g) for k, g in groups] # discard keys
     # }}}
 
@@ -209,12 +216,14 @@ class Utils(object):
 
     @staticmethod
     def find_paths_in_directory(records, target): # {{{
+        sep = os.path.sep
+        t = target.strip(sep).split(sep)
         if Utils.setting('open_files_recursively', fmt=int):
             return [record for record in records
-                    if target[:-1] in record.path.split(os.path.sep)]
+                    if Utils.is_sublist(t, record.path.split(sep))]
         else:
             return [record for record in records
-                    if os.path.split(record.path)[0].endswith(target[:-1])]
+                    if record.path[-len(t):] == t]
     # }}}
 
     @staticmethod
@@ -226,7 +235,7 @@ class Utils(object):
         sorted_groups = [sorted(g, key=attrgetter(attr), reverse=reverse)
                          for g in groups]
         if flatten:
-            return list(itertools.chain.from_iterable(sorted_groups))
+            return list(chain.from_iterable(sorted_groups))
         else:
             return sorted_groups
     # }}}
@@ -235,19 +244,14 @@ class Utils(object):
     def group_by_path(paths, path): # {{{
         """To group records according to the given path.
 
+        every item in 'paths' is assumed to contain 'path.
         Example:
         >>> l = ['a/b', 'a/c/b', 'a/b/c', 'a/c/b/h']
-        >>> group_by_path(l, 'b') # all input is assumend to contain 'b'
+        >>> group_by_path(l, 'b') 
         [['a/b', 'a/b/c'], ['a/c/b', 'a/c/b/h']]
         """
-        sep = os.path.sep
-
-        def keyfunc(r):
-            l = r.path.split(sep)
-            return sep.join(l[:l.index(path.strip(sep))])
-
-        groups = itertools.groupby(sorted(paths, key=attrgetter('path')),
-                                   key=keyfunc)
+        groups = groupby(sorted(paths, key=attrgetter('path')),
+                         key=lambda r: r.path[:r.path.index(path)])
         return [list(g) for key, g in groups]
     # }}}
 
@@ -433,8 +437,10 @@ class Inspector(object):
         self.mapper = {} # line to record mapper
 
         mode = Utils.setting('mode')
-        if mode in [u'most_frequent', u'most_recent']:
-            self.order_by = mode
+        if mode == 'most_frequent':
+            self.order_by = 'frequency'
+        elif mode == 'most_recent':
+            self.order_by = 'last_access'          
         else:
             self.order_by = u'context'
 
@@ -486,7 +492,7 @@ class Inspector(object):
                             reverse=not self.reverse_order)
 
             records = Utils.sort_groups_by(groups, 'last_access',
-                            flatten=True, reverse=not self.reverse_order)
+                            flatten=True, reverse=self.reverse_order)
         else:
             records = sorted(self.ozzy.db.all(),
                              key=attrgetter(self.order_by),
@@ -623,10 +629,9 @@ class Inspector(object):
 
     def update_rendering(self): # {{{
         """To render the buffer only if it is already opened."""
-        if not self.opened():
-            return
-        self.open()
-        self.insert_line_indicator()
+        if self.opened():
+            self.open()
+            self.insert_line_indicator()
     # }}}
 
     def follow_record(self): # {{{
@@ -698,12 +703,13 @@ class Inspector(object):
             path = self.get_path_on_line()
             if path:
                 self.ozzy.db.delete(path)
+            self.cursor = list(vim.current.window.cursor)
         else:
-            paths = itertools.ifilter(None,
-                        [self.get_path_on_line(line)
-                         for line in xrange(start[0], end[0]+1)])
+            paths = ifilter(None, [self.get_path_on_line(line)
+                                   for line in xrange(start[0], end[0]+1)])
             self.ozzy.db.delete_many(paths)
             vim.command('delmarks <>')
+            self.cursor = list(start)           
 
         self.update_rendering()
     # }}}
@@ -878,9 +884,9 @@ class Ozzy(object):
         if bufname is None and not self.insp.opened():
             bufname = vim.current.buffer.name.decode('utf-8')
 
-        cond = not Utils.match_patterns(bufname, Utils.setting('ignore'))
+        if (bufname not in self.opened_buffers
+            and not Utils.match_patterns(bufname, Utils.setting('ignore'))):
 
-        if cond and bufname not in self.opened_buffers:
             if bufname in self.db:
                 self.db.update(bufname, +1, dt.now())
             else:
@@ -914,13 +920,22 @@ class Ozzy(object):
             # open all files in the given directory
             matches = Utils.find_paths_in_directory(self.db.all(), target)
 
-            groups = Utils.group_by_path(matches, target)
+            groups = Utils.group_by_path(matches, target.strip(os.path.sep))
 
-            # reduce each group to the standard deviation respect to the
-            # 'last_access' attribute ??
-            groups_std = Utils.decorate_groups_mean(groups, dt.now())
+            # For each group, this method:
+            # 1. takes all its records
+            # 2. for every record computes the time delta (in seconds) between
+            #    now (dt.now()) and its last_access attribute
+            # 3. computes the mean of all the time deltas
+            # 4. decorate each group with the relative mean
+            #
+            _groups = Utils.decorate_groups_mean(groups, dt.now())
 
-            m = min(groups_std, key=itemgetter(0))[1]
+            # select the group who has the minimum mean
+            if _groups:
+                m = min(_groups, key=itemgetter(0))[1]
+            else:
+                m = []
 
             n = Utils.setting('max_num_files_to_open', fmt=int)
             if n > 0:
@@ -930,9 +945,11 @@ class Ozzy(object):
                 paths =  [r.path for r in m]
 
             if matches:
-                vim.command("args {0}".format(
-                    ' '.join(Utils.escape_spaces(p).encode('utf8')
-                             for p in paths)))
+                for p in paths:
+                    self.update_buffer(p)
+                    vim.command('99argadd {0}'.format(
+                        Utils.escape_spaces(p).encode('utf-8')))
+                self.insp.update_rendering()
                 Utils.feedback(u'{0} files opened'.format(len(paths)))
             else:
                 Utils.feedback(u'nothing found')
@@ -1125,11 +1142,12 @@ class Ozzy(object):
                     self.db.add_many(paths, 1, dt.now())
                     Utils.feedback('{0} files successfully added!'.format(len(paths)))
                 else:
-                    Utils.feedback(u'nothing added!')
-
-                self.insp.update_rendering()
+                    Utils.feedback(u'no files added!')
             else:
-                Utils.feedback(u'nothing found')
+                Utils.feedback(u'nothig found')
+
+            self.insp.update_rendering()
+
         else:
             Utils.feedback(u'directory not found')
 
@@ -1182,7 +1200,7 @@ def _matches(seed, func=lambda x: x):
             if func(os.path.split(r.path)[1]).startswith(func(seed))]
 
 if Utils.setting('ignore_case', fmt=int):
-    matches = _matches(seed, func=lambda x: x.lower())
+    matches = _matches(seed, func=methodcaller('lower'))
 else:
     matches = _matches(seed)
 

@@ -5,7 +5,7 @@
 
                                      ~
                               Reference Manual
-                                  v.0.7.1
+                                  v.0.7.2
 
 ==============================================================================
 CONTENTS                                                       *ozzy-contents*
@@ -110,7 +110,6 @@ and their relative actions:
     p     to toggle between absolute and relative to home paths
     f     to order records by frequency
     a     to order records by date and time
-    c     order records by distance relative to the current working directory
     r     to reverse the current records order
     o     to open the file on the current line
     +     to increase the frequency of the file on the current line
@@ -475,6 +474,10 @@ default: 'freeze'
 
 ==============================================================================
 9. Changelog                                                  *ozzy-changelog*
+
+v0.7.2
+  * fixed some behavior issues with OzzyAddDirectory, OzzyOpen commands and in 
+    the inspector buffer.
 
 v0.7.1
   * added useful information in the inspector buffer.

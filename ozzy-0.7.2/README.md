@@ -1,6 +1,6 @@
 # Ozzy.vim
 
-**v0.7.1**
+**v0.7.2**
 
 
 Ozzy allows you to open almost any file from anywhere. Just give a file name
@@ -96,7 +96,6 @@ and their relative actions:
     p     to toggle between absolute and relative to home paths
     f     to order records by frequency
     a     to order records by date and time
-    c     order records by distance relative to the current working directory
     r     to reverse the current records order
     o     to open the file on the current line
     +     to increase the frequency of the file on the current line
