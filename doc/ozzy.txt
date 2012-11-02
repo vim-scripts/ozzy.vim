@@ -1,431 +1,404 @@
 *ozzy.txt* *ozzy*
 
-                                    Ozzy
-                            Quick files launcher.
-
-                                     ~
-                              Reference Manual
-                                  v.0.7.2
-
+                                     Ozzy
+                             Quick files launcher.
+                   
+                                      ~
+                               Reference Manual
+                                   v.0.8.0
+                   
 ==============================================================================
 CONTENTS                                                       *ozzy-contents*
 
-     1. Overview .............................. |ozzy-overview|
-     2. Usage ................................. |ozzy-usage|
-     3. Modes ................................. |ozzy-modes|
-     4. Freeze Ozzy ........................... |ozzy-freeze|
-     5. Inspector ............................. |ozzy-inspector|
-     6. Commands .............................. |ozzy-commands|
-     7. Mappings .............................. |ozzy-mappings|
-     8. Settings .............................. |ozzy-settings|
-     9. Changelog ............................. |ozzy-changelog|
-    10. License ............................... |ozzy-license|
-    11. Credits ............................... |ozzy-credits|
+           1. Overview .............................. |ozzy-overview|
+           2. Usage ................................. |ozzy-usage|
+           3. Commands .............................. |ozzy-commands|
+           4. Settings .............................. |ozzy-settings|
+           5. Changelog ............................. |ozzy-changelog|
+           6. License ............................... |ozzy-license|
+           7. Credits ............................... |ozzy-credits|
 
 
 ==============================================================================
 1. Overview                                                    *ozzy-overview*
 
-Ozzy allows you to open almost any file from anywhere. Just give a file name
-and (if the file has been accessed at leat once in the past) the most
-frequently used file or the most recently accessed one is picked for you, no
-more entire paths to digit or folder to cd into! 
+Ozzy let you easily open files from the command line. It's pretty much a file
+indexer that keeps track of the files you edit day by day. When you need to
+open a specific file just use its name and depending on some criterion
+(customizable) the right file will be opened.   
 
 
 ==============================================================================
-2. Usage                                                          *ozzy-usage*
+2. Basic Usage                                                    *ozzy-usage*
 
-Ozzy is very straightforward to use. Once installed, you can start editing your
-favourite files as always. Once you open a file Ozzy registers it and from then
-you can open that file with the following command: 
+Ozzy is very straightforward to use. Once installed, you can start editing 
+files as always. Once you open a file Ozzy keeps track of it and from then you
+can open that file with the following command:
 
-    :Ozzy <file name>
+  :Ozzy <file name>
 
-If Ozzy has in its database only one file that match the given `<file name>`, 
-then that file is opened. If Ozzy find more that one match in its database, 
-it has to decide what is the right file to open. By default Ozzy opens the most
-frquently used file but you can change this behaviour to open the most recently 
-used file, or even the file closest to the current working directory (context mode).
-See [Modes](#ozzy-modes) for more informations.      
-If you want to open a file regardless its frequency, access time or the current
-context, you can specify a partial path:   
+How Ozzy knows the right file to open when there are two or more files with the
+same name? Ozzy by default opens the file who has been opened more times. You
+can customize this behavior setting the |g:ozzy_mode| variable to the
+following values:
 
-    :Ozzy <partial path>/<file name>
+  * 'most frequent': open the most frequently opened file.
+  * 'most recent': open the most recently opened file.
+  * 'context': open the closest file respect to the current working directory.
 
-But what if you want to open a bunch of files at the same time? Well, if you
-end the `<file name>` with a forward slash `/`, Ozzy will interpret it as
-a directory and it will open all files contained into it (not recursively and
-only those files that Ozzy has in its database).
+You are not limited to just file names. The |Ozzy| command accepts even partial
+paths such as ':Ozzy directory/filename' and directory names such as 
+':Ozzy directory/'. In the latter case note the presence of a forward slash as
+the last character: this cause Ozzy to open all the files contained in the
+directory (note that only files tracked by Ozzy will be opened).
 
-
-If the filename is long or you don't remember part of it you can use command
-line completion using the <TAB> key to cycle through possible matches.   
+Command line tab completion is supported but only for file names.   
 
 
 ==============================================================================
-3. Modes                                                          *ozzy-modes*
-
-A mode determines how Ozzy chooses the right file to open when it is faced with
-a buch of file in its database that match the file the user want to 
-open. There are three modes available: 
-
-    * 'most frequent': the most frequently used file is opened.
-
-    * 'most recent': the most recently used file is opened.
-
-    * 'context': the file closest the current working directory is opened.
-
-The default mode is 'most frequent' but you can toggle between the three modes 
-during a vim session with the |OzzyToggleMode| command or set the default mode 
-by setting the |g:ozzy_mode| option.
-
-
-==============================================================================
-4. Freeze Ozzy                                                   *ozzy-freeze*
-
-When Ozzy is frozen it does not update its database every time you open a file.
-Though, you can still use all the Ozzy commands. If you want to freeze Ozzy
-for a long period of time you can set the |g:ozzy_freeze| option in your .vimrc
-file. If you want to freeze Ozzy for a brief period you can toggle on and off 
-this option using the |OzzyToggleFreeze| command during a vim session.
-
-
-==============================================================================
-5. Inspector                                                  *ozzy-inspector*
-
-The Inspector is the place where you can do tricky things. Here, besides some
-information about the current Ozzy status, you can inspect the whole content of
-the database where are stored all the files you have opened until now.
-The database is presented as a list of records where each records represent
-a single file with some additional information: the file path, the frequency
-usage and a last access date attribute.
-But you can do more than simply inspect the content of the database. 
-Below are listed all the keyboard keys you can use during an Inspector session
-and their relative actions:
-
-    key   meaning
-    ---   --------------------------------------------
-    q     to quit inspector
-    ?     to toggle help
-    p     to toggle between absolute and relative to home paths
-    f     to order records by frequency
-    a     to order records by date and time
-    r     to reverse the current records order
-    o     to open the file on the current line
-    +     to increase the frequency of the file on the current line
-    *     as above but increases the frequency by 5
-    -     to decrease the frequency of the file on the current line
-    _     (underscore) as above but decreases the frequency by 5
-    t     to touch the file on the current line (set its last access attribute to now)
-    dd    to remove from the list the record under the cursor (or an entire selection)
-
-Note: The current line is the line where the cursor is positioned.
-      To move up and down the records list use the classic hjkl keys.
-
-
-==============================================================================
-6. Commands                                                    *ozzy-commands*
+3. Commands                                                    *ozzy-commands*
 
 ------------------------------------------------------------------------------
-Ozzy <file name>
+Ozzy                                                                    *Ozzy*
 shortcut: O
 
-If Ozzy has in its database a file that match the given `<file name>`, then it
-is opened. If you ends <file name> with a forward slash `/` Ozzy will interpret
-the argument as a directory and it will open all the files in that direcory
-according to the |g:ozzy_max_num_of_files_to_open|
-option. In fact, if there more files, only the most recently or frequently
-accessed (according to g:ozzy_mode) will be opened. Note however that Ozzy does
-not really inspect the real directory on the file system to scan for files, but
-instead, it will search exclusively in its database for matches. You have to
-open files at leat once 'manually' before Ozzy can open them for you.  
+ | possible arguments:
+ |
+ | * a file name
+ | * a partial path (example: directory/filename)
+ | * a path ending with a forward slash (example: directory/)
 
-See also |ozzy-modes| to find out how to change the behaviour of this
-command when there are two or more files that match the given <file name>.
+Depending to the type of the passed argument this command performs different
+actions:
 
+  * if a file name is given then a file in the index that match the give name is
+    opened (the right file is selected depending on the current mode: most
+    frequent, most recent or context). See also the option |g:ozzy_ignore_ext|.
+
+  * if a partial path ending with a filename is given the the behavior descibed
+    above is retained but there might be less potenyial conflicts.
+
+  * if a partial path ending with a forward slash is given the all files
+    contained in that directory will be opened (only those files tracked by
+    Ozzy). If Ozzy has in its index two or more directories with tha same name, 
+    the right one is selected according to the current mode:
+
+    - 'most frequent': the directory that contains more frequently opened files 
+      is opened.
+    - 'most recent': the directory that contains more recently accessed files is
+      opened.
+    - 'context': the closests directory is opened.
+   
+Note however that Ozzy does not really scan the physical directory on the file
+system, but instead it will search exclusively in its database for possible
+matches. You have to open files at least once manually or with the
+|OzzyAddDirectory| command before Ozzy can open them.
+                                                     
 
 ------------------------------------------------------------------------------
 OzzyInspect                                                      *OzzyInspect*
 shortcut: Oi
 
-Open the database inspector. 
-See also |ozzy-inspector|.
+Opens the Inspector buffer. This place is where you can inspect the whole file
+index and perform some actions on single entries like increasing the access
+frequency, setting the last access time, doing various sorts, ecc.. For more
+information about available actions type '?' inside the Inspector buffer. 
 
 
 ------------------------------------------------------------------------------
-OzzyAddDirectory <directory> [options]                      *OzzyAddDirectory*                                 
-shortcut: OAdd
+OzzyScope                                                          *OzzyScope*
+shortcut: Oscope
 
-To add all files contained into the given <directory> (except those contained
-into hidden directories). The <directory> argument must be an absolute path
-but if you want to add all files contained into the current working directory
-you can use the '.' shortcut instead. To add the current parent directory use
-the '..' argument. Use the '...' argument to add the project root directory.
-By default Ozzy assumes it is the one that contains a '.git', '.hg' or a 
-'.svn' folder along the current working directory path. You can override this
-behavior setting the |g:ozzy_what_in_project_root| setting or with the 
-'-p <list>' command line option but the effect of the latter will last for 
-just the current command).
+ | possible arguments:
+ |
+ | * an absolute path
+ | * . (single dot)
+ | * .. (two dots)
+ | * ... (three dots)
 
-You can customize the default behavior of this command with the following 
-options:
+Sets the Ozzy scope to the given path. By default the scope is global but once
+you set it to a certain 'path' Ozzy will be no more able to open files that
+reside outside that 'path'. Further, they will be no more indexed and
+included command line completion. Already indexed files won't be removed:
+you can still interact with them throughout the Inspector. If you want to add
+all files contained into the current working directory you can use the '.'
+shortcut instead. To add the current parent directory use the '..' argument.
+Use the '...' argument to add the project root directory (see the
+|g:ozzy_what_in_project_root| option). By default Ozzy assumes the project 
+root directory as the one containing a '.git', '.hg' or a '.svn' folder along 
+the current working directory path.
+To restore the global scope use the command with no arguments.
+
+You can customize the default behavior with the following options:
+
+  * -p <comma separated list>: override the global |g:ozzy_what_in_project_root| 
+    option. Works only with the special argument '...'.          
 
 
-   -h: to add files contained into hidden directories.
+------------------------------------------------------------------------------
+OzzyAddDirectory                                            *OzzyAddDirectory*                                 
+shortcut: Oadd
 
-   -a <comma separated list>: use this option to add only specific files.
-       See below for all the allowed patterns.
+ | possible arguments:
+ |
+ | * an absolute path
+ | * . (single dot)
+ | * .. (two dots)
+ | * ... (three dots) 
 
-   -i <comma separated list>: use this option to ignore specific files.
-       See below for all the allowed patterns.
+To add all files contained into the given 'path' (by default except those
+contained into hidden directories). If you want to add all files contained into
+the current working directory you can use the '.' shortcut instead. To add the
+current parent directory use the '..' argument. Use the '...' argument to add
+the project root directory (see the |g:ozzy_what_in_project_root| option). By
+default Ozzy assumes the project root directory as the one containing a '.git',
+'.hg' or a '.svn' folder along the current working directory path.
 
-   -p <comma separated list>: use this option to override the global 
-       |g:ozzy_what_in_project_root| setting. 
+You can customize the default behavior with the following options:
 
+  * -h: add files contained into hidden directories.
 
-Below are listed all the patterns you can use:
+  * -a <comma separated list>: add only specific files. See below for allowed
+    patterns.
 
-    - *.<ext>  
-    all files with extension '<ext>'.
-    examples: *.py *.cpp
+  * -i <comma separated list>: ignore specific files. See below for allowed 
+    patterns. 
 
-    - <file name>.*
-    all files named '<file name>' regardless the extension (note that the files
-    that exactly match <file name> will be considered too).
-    examples: doc.* log.* README.*
+  * -p <comma separated list>: override the global |g:ozzy_what_in_project_root|
+    option. Works only with the special argument '...'.
 
-    - <file name> 
-    all file names that exactly match '<file name>'.
-    examples: test.py junk.txt LICENSE 
+Allowed patterns:
 
-    - <path>/
-    all file paths that contains '<path>/'.
-    examples: doc/ (every file in <anything>/doc/)    
+  * '*.<ext>'     
+    all file names with extension <ext>     
+    examples: *.py, *.cpp
+
+  * '<file name>.*'   
+    all files named <file name> regardless the extension (file names that 
+    exactly match <file name> will be considered too).    
+    examples: doc.*, log.*, README.*
+
+  * '<file name>'    
+    all file names that exactly match <file name>.     
+    examples: test.py, junk.txt, LICENSE
+
+  * '<partial path>/'   
+    all paths that contain <path>.    
+    examples: doc/ (every file in a folder called 'doc')   
 
 
 ------------------------------------------------------------------------------
 OzzyRemove <pattern>                                              *OzzyRemove*
 shortcut: Orm
 
-To remove from the database all the files that match the given pattern. Below
-the accepted patterns:
+ | possible arguments:
+ |
+ | * a pattern (see below for allowed patterns)
+ | * % 
 
-    - *.<ext>  
-    all files with extension '<ext>'.
-    examples: *.py *.cpp
+To remove from the index all the entries that match the given pattern. Use the
+special '%' argument if you want to remove the current file. 
 
-    - <file name>.*
-    all files named '<file name>' regardless the extension (note that the files
-    that exactly match <file name> will be removed too).
-    examples: doc.* log.* README.*
+Allowed patterns:
 
-    - <file name> 
-    all file names that exactly match '<file name>'.
-    examples: test.py junk.txt LICENSE 
+  * '*.<ext>'     
+    all file names with extension <ext>     
+    examples: *.py, *.cpp
 
-    - <file path>
-    all file paths that ends with '<file path>'.
-    examples: /doc/file.txt (every 'file.txt' in a folder called 'doc')
-              /Users/donald/file.txt (a specific file.txt)
+  * '<file name>.*'   
+    all files named <file name> regardless the extension (file names that 
+    exactly match <file name> will be considered too).    
+    examples: doc.*, log.*, README.*
 
-    - <path>/
-    all file paths that contains '<path>/'.
+  * '<file name>'    
+    all file names that exactly match <file name>.     
+    examples: test.py, junk.txt, LICENSE
+
+  * '<partial path>/'   
+    all paths that contain <path>.    
     examples: doc/ (every file in a folder called 'doc')    
 
 
 ------------------------------------------------------------------------------
-OzzyKeepLast <time period>                                      *OzzyKeepLast*
+OzzyKeepLast                                                    *OzzyKeepLast*
 shortcut: Okeep
 
-Where <time period> is an argument composed of two parts: a number n > 0 and
-a string, separated by a space. This two parts together represent a period of
-time. See the examples below:
+ | possible arguments:
+ |
+ | * number [m | min | minute | minutes]  
+ | * number [h | hour | hours]  
+ | * number [d | day | days]  
+ | * number [w | week | weeks]
+ |    
+ | where number >= 0
 
-    - Okeep 15 minutes
-    - Okeep 2 hours
-    - Okeep 1 day
-    - Okeep 3 weeks
+Removes all entries (files) from the index that have not been accessed at least
+once in the last n (minutes, hours, days or weeks). This options might helps to
+keep the index clean and ordinated.
 
-When you give such a command, then all the database entries (files) that have
-not been accessed at least once in the last n (minutes, hours, days or weeks) 
-will be removed. This options may helps to keep the database ordinated. 
-There are shortcuts for specifying minutes, hours, days, and weeks:
+Examples:
 
-    - minutes: m, min, minute, minutes
-    - hours: h, hour, hours
-    - days: d, day, days
-    - weeks: w, week, weeks
-
-See also the |g:ozzy_keep| option.  
+* OzzyKeepLast 2 weeks: removes all files not accessed in the last two weeks. 
 
 
 ------------------------------------------------------------------------------
 OzzyReset                                                          *OzzyReset*
 
-To remove all files entries from the database.
+To remove all the entries from the database index.
 
 
 ------------------------------------------------------------------------------
 OzzyToggleMode                                                *OzzyToggleMode*
 
-To toggle between 'most frequent' and 'most recent' modes.
-See |ozzy-modes| and |g:ozzy_mode|. 
+To toggle between 'most frequent', 'most recent' and 'context' modes. See the 
+|g:ozzy_mode| option.
 
 
 ------------------------------------------------------------------------------
 OzzyToggleFreeze                                            *OzzyToggleFreeze*
 
-To toggle between 'freeze on' and 'freeze off' modes.
-See also |ozzy-freeze| and |g:ozzy_freeze|. 
+To toggle between 'freeze on' and 'freeze off' modes. See the |g:ozzy_freeze| 
+option.    
 
 
 ------------------------------------------------------------------------------
 OzzyToggleExtension                                      *OzzyToggleExtension*
 
-To toggle between 'consider extension' and 'ignore extensions' mode.
-See also the |g:ozzy_ignore_ext| option.
+To toggle between 'consider extension' and 'ignore extensions' modes. See the
+|g:ozzy_ignore_ext| option.
 
 
 ==============================================================================
-8. Settings                                                    *ozzy-settings*
+4. Settings                                                    *ozzy-settings*
 
 ------------------------------------------------------------------------------
 g:ozzy_mode                                                      *g:ozzy_mode* 
 
-Set this variable to define the default behaviour for opening files. 
+Set this variable to define the behavior when opening files. 
 Below all the available modes:
 
-    * 'most_frequent': the most used file with the given name is opened.
-    * 'most_recent': the most recently accessed file is opened.
-    * 'context': the file closest to the current working directory is opened.
+  * 'most frequent': open the most frequently opened file.
+  * 'most recent': open the most recently opened file.
+  * 'context': open the closest file respect to the current working directory.
 
-default: 'most_frequent'
+default: 'most frequent'  
 
 
 ------------------------------------------------------------------------------
 g:ozzy_freeze                                                  *g:ozzy_freeze* 
 
-Set to 1 this variable and Ozzy will not add any new file to its database nor
-will update any existent file. If you want to freeze Ozzy only for a brief
-period of time during a vim session, you can toggle this option on and off 
+If setted to 1 Ozzy will no more adds or updates any files in its internal
+index but files already tracked will still be available for opening.
+
+To freeze Ozzy only for a short period you can toggle this option on and off
 with the |OzzyToggleFreeze| command.
 
 default: 0
 
 
 ------------------------------------------------------------------------------
+g:ozzy_scope                                                    *g:ozzy_scope* 
+
+Set this option to an absolute path in order to limit the scope of the whole
+Ozzy activity. That is, Ozzy will index and update only files under that path.
+See also the |OzzyScope| command.
+
+default = ''   
+
+
+------------------------------------------------------------------------------
 g:ozzy_ignore_ext                                          *g:ozzy_ignore_ext* 
 
-Set this option to 1 and Ozzy will ignore extension when serching in its
-database for the file to open. Suppose that Ozzy has two entries in its
-database: /file1.rb and /file1.py. If this option is set to 0 you must specify
-the file name and the extension in order to open one of these two files,
-otherwise no file will be opened. If you set this option to 0 there is no more
-need to specify the extension and Ozzy will open the file that has been most
-frequently (or recently, according to the current mode), though, you can still 
-specify the extnsion if you want.
+If setted to 1 Ozzy will ignore extension when serching in its index for the
+right file to open.  Suppose that Ozzy has two entries in its database:
+'/file.rb' and '/file.py' and this option is setted to 1: you can open any of
+these two file just using their filename: 'file'. Ozzy will open the right
+file according to the current mode.
 
-default: 1
+default: 1    
 
 
 ------------------------------------------------------------------------------
 g:ozzy_ignore                                                  *g:ozzy_ignore* 
 
-This is a list containing naive patterns that tell Ozzy what to ignore. That is, 
-any file that match any of these patterns will not be added to the database or
-updated if already exists in the database. Below all the accepted patterns:
+This is a list containing naive patterns to tell Ozzy what to ignore. That is, 
+any file that match any of these patterns will not be added to the database (or
+updated if already indexed). Below the allowed patterns:
 
-    - *.<ext>  
-    all files with extension '<ext>'.
-    examples: *.py *.cpp
+  * '*.<ext>'     
+    all file names with extension <ext>     
+    examples: *.py, *.cpp
 
-    - <file name>.*
-    all files named '<file name>' regardless the extension (note that the files
-    that exactly match <file name> will be ignored too).
-    examples: doc.* log.* README.*
+  * '<file name>.*'   
+    all files named <file name> regardless the extension (file names that 
+    exactly match <file name> will be considered too).    
+    examples: doc.*, log.*, README.*
 
-    - <file name> 
-    all file names that exactly match '<file name>'.
-    examples: test.py junk.txt LICENSE 
+  * '<file name>'    
+    all file names that exactly match <file name>.     
+    examples: test.py, junk.txt, LICENSE
 
-    - <file path>
-    all file paths that ends with '<file path>'.
-    examples: /doc/file.txt (every 'file.txt' in a folder called 'doc')
-              /Users/donald/file.txt (a specific file.txt)
-
-    - <path>/
-    all file paths that contains '<path>/'.
-    examples: vim/runtime/doc/ (every file in <anything>/vim/runtime/doc)
-
-default: []
+  * '<partial path>/'   
+    all paths that contain <path>.    
+    examples: doc/ (every file in a folder called 'doc')   
+         
+default: []    
 
 
 ------------------------------------------------------------------------------
 g:ozzy_keep                                                      *g:ozzy_keep* 
 
-This option can be set to a number n >= 0 where n represent a number of days.
-If set to 0 (default) this options simply do nothing. If set to a number n > 0,
-then all the database entries (files) that have not been accessed in the
-last n days  at least once will be automatically removed. This options may
-helps to keep fresh and clean the database.
+This option can be set to a number n &gt;= 0, where n represent a number of
+days.  If set to 0 this options simply do nothing. If set to a number n &gt; 0,
+then all the database entries (files) that have not been accessed in the last
+n days at least once will be automatically removed. This options might helps 
+to keep clean the database.
 
-example: let g:ozzy_keep = 30 
-         if a file registered in the database is not accessed for 30 days, it
-         is removed.
+example: 
 
-default: 0
+  * 'let g:ozzy_keep = 30' : if an indexed file is not accessed for 30 days, it
+    is removed.
 
--------------------------------------------------------------------------------
-g:ozzy_max_num_files_to_open                     *g:ozzy_max_num_files_to_open*     
+default: 0       
 
-The max number of files that can be opened when you open multiple files with the 
-`Ozzy` command. If this option is set to `0` no limit on is applied.
-See also the |Ozzy| command.
-
-default: 0         
-
-
--------------------------------------------------------------------------------
-g:ozzy_open_files_recursively                   *g:ozzy_open_files_recursively*     
-
-Set this option to open all files recursively when using the |Ozzy| command with
-a directory name (<path>/) as argument. If set to 0, only those files that are
-directly contained in the given directory (only one level depth) will be opened.
-See also the |Ozzy| command.
-
-default: 1        
-
-
-------------------------------------------------------------------------------
-g:ozzy_enable_shortcuts                              *g:ozzy_enable_shortcuts* 
-
-If set to 1, this option enables the commands shortcut. Below all the available 
-commands shortcuts with their respective 'long version':
-
-    - O : Ozzy
-    - Oi : OzzyInspect
-    - Orm : OzzyRemove
-    - Okeep : OzzyKeepLast
-
-default: 1
 
 ------------------------------------------------------------------------------
 g:ozzy_what_in_project_root                      *g:ozzy_what_in_project_root* 
 
-This setting is a list representing file or directory names used by Ozzy to 
-determine the current project root.
+This setting is a list of files or directories names used by Ozzy to determine
+the current project root. That is, Ozzy assumes the project root directory
+as the one containing a '.git', '.hg' or a '.svn' folder along the current
+working directory path. (option used in |OzzyAddDirecory| and |OzzyScope| 
+commands)
 
-default: ['.git', '.hg', '.svn']
+default: ['.git', '.hg', '.svn']  
 
 
 ------------------------------------------------------------------------------
 g:ozzy_ignore_case                                        *g:ozzy_ignore_case* 
 
 If set to 1, this option enables case insensitive command line completion and
-files opening. Thi means you can type lowercase file names all the time  
-regardless their real case. 
+files opening. This means you can type lowercase file names all the time  
+regardless the real case.
 
 default: 0   
+
+ 
+-------------------------------------------------------------------------------
+g:ozzy_max_num_files_to_open                     *g:ozzy_max_num_files_to_open*     
+
+The max number of files that can be opened when you open multiple files with the 
+|Ozzy| command. If this option is set to '0' no limit on is applied.
+
+default: 0               
+
+
+------------------------------------------------------------------------------
+g:ozzy_enable_shortcuts                              *g:ozzy_enable_shortcuts* 
+
+If set to 1, this option enables the commands shortcut.
+
+default: 1       
 
 
 ------------------------------------------------------------------------------
@@ -449,10 +422,11 @@ default: 'T'
 ------------------------------------------------------------------------------
 g:ozzy_context_flag                                      *g:ozzy_context_flag* 
 
-This option represent the flag returned by the OzzyModeFlag() function when the 
-current mode is set to 'context'.
+This option represent the flag returned by the OzzyContextFlag() function when 
+the current mode is set to 'context'.
 
 default: 'C'    
+
 
 ------------------------------------------------------------------------------
 g:ozzy_freeze_off_flag                                *g:ozzy_freeze_off_flag* 
@@ -473,7 +447,13 @@ default: 'freeze'
 
 
 ==============================================================================
-9. Changelog                                                  *ozzy-changelog*
+5. Changelog                                                  *ozzy-changelog*
+
+v0.8.0
+  * new OzzyScope command
+  * backward incompatibility issue: 'most_recent' and 'most_frequent' modes 
+    renamed respectively to 'most recent' and 'most frequent'. Removed 
+    'g:ozzy_open_files_recursively' option.
 
 v0.7.2
   * fixed some behavior issues with OzzyAddDirectory, OzzyOpen commands and in 
@@ -530,16 +510,13 @@ v0.1
 
 
 ==============================================================================
-10. License                                                     *ozzy-license*
+6. License                                                      *ozzy-license*
 
 Ozzy is MIT licensed.
 
 
 ==============================================================================
-11. Credits                                                     *ozzy-credits*
+7. Credits                                                      *ozzy-credits*
 
-Developed by Giacomo Comitti
-
+Author: Giacomo Comitti
 Git repository: https://github.com/gcmt/ozzy.vim
-
-Contributors:
