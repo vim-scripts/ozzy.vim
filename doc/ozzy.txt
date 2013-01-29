@@ -5,7 +5,7 @@
                    
                                       ~
                                Reference Manual
-                                   v.0.8.0
+                                   v.0.9.0
                    
 ==============================================================================
 CONTENTS                                                       *ozzy-contents*
@@ -281,7 +281,14 @@ Below all the available modes:
   * 'most recent': open the most recently opened file.
   * 'context': open the closest file respect to the current working directory.
 
-default: 'most frequent'  
+
+------------------------------------------------------------------------------
+g:ozzy_db_path                                                *g:ozzy_db_path* 
+
+Set this variable to the path in which you want the database to be created.
+By default the plugin directory is used.
+
+default: '' (the plugin directory is used)
 
 
 ------------------------------------------------------------------------------
@@ -381,7 +388,36 @@ If set to 1, this option enables case insensitive command line completion and
 files opening. This means you can type lowercase file names all the time  
 regardless the real case.
 
-default: 0   
+default: 0 
+
+
+------------------------------------------------------------------------------
+g:ozzy_filter_inspector_by_scope            *g:ozzy_filter_inspector_by_scope* 
+
+If set to 1, in the inspector buffer records will be filtered by scope, that
+is, only files that reside into the scope (|g:ozzy_scope|) will be visible. You
+can toggle this option inside the inspector buffer with the 'x' key.
+
+default: 0
+
+
+------------------------------------------------------------------------------
+g:ozzy_hide_scope_inspector                      *g:ozzy_hide_scope_inspector*
+
+If set to 1 and the |g:ozzy_filter_inspector_by_scope| option is set to 1 then
+this combination hides the scope (!g:ozzy_scope|) inf file paths. You can
+toggle this option inside the inspector buffer with the 'z' key.
+
+default: 0      
+
+
+------------------------------------------------------------------------------
+g:ozzy_show_env_inspector                          *g:ozzy_show_env_inspector*
+
+If set to 1, various settings will be displayed inside the inspector buffer.
+You can toggle this option inside the inspector buffer with the 'e' key. 
+
+default: 1       
 
  
 -------------------------------------------------------------------------------
@@ -448,6 +484,15 @@ default: 'freeze'
 
 ==============================================================================
 5. Changelog                                                  *ozzy-changelog*
+
+v0.9.1
+  * added new setting g:ozzy_db_path to set a custom database path.
+  * fixed possible conflicts with other plugins.
+
+v0.9.0
+  * new inspector related options: 'g:ozzy_filter_inspector_by_scope',
+    'g:ozzy_hide_scope_inspector', 'g:ozzy_show_env_inspector'.
+  * new mappings in the inspector buffer: 's', 'x', 'z', 'e'.
 
 v0.8.0
   * new OzzyScope command

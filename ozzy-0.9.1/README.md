@@ -1,6 +1,6 @@
 # Ozzy.vim
 
-**v0.8.0**
+**v0.9.1**
 
 Ozzy let you easily open files from the command line. It's pretty much a file
 indexer that keeps track of the files you edit day by day. When you need to open
@@ -101,9 +101,7 @@ information about available actions type `?` inside the Inspector buffer.
 possible arguments:
 
 * an absolute path
-* . (single dot)
-* .. (two dots)
-* ... (three dots)
+* [. | .. | ...]
 ```   
 
 Sets the Ozzy scope to the given path. By default the scope is global but once
@@ -131,9 +129,7 @@ You can customize the default behavior with the following options:
 possible arguments:
 
 * an absolute path
-* . (single dot)
-* .. (two dots)
-* ... (three dots)
+* [. | .. | ...]
 ```        
 
 To add all files contained into the given `path` (by default except those
@@ -256,8 +252,8 @@ To toggle between `consider extension` and `ignore extensions` modes. See the
 
 ### g:ozzy_mode             
 
-Set this variable to define the default behavior when opening files. 
-Below all the available modes:
+Set this variable to define the default behavior for opening files and command
+line completion. Below all the available modes:
 
 * `'most frequent'`: open the most frequently opened file.
 * `'most recent'`: open the most recently opened file.
@@ -266,11 +262,18 @@ Below all the available modes:
 default: `'most frequent'`
 
 
+### g:ozzy_db_path  
+
+Set this variable to the path in which you want the database to be created.
+By default the plugin directory is used.
+
+default: `''` (the plugin directory is used)    
+
 
 ### g:ozzy_freeze  
 
-If setted to 1 Ozzy will no more adds or updates any files in its internal index
-but files already tracked will still be available for opening.
+Set this option to 1 and Ozzy will no more add or update any files in its
+internal index but files already tracked will still be available for opening.
 
 To freeze Ozzy only for a short period you can toggle this option on and off 
 with the `OzzyToggleFreeze` command.
@@ -281,8 +284,8 @@ default: 0
 
 ### g:ozzy_ignore_ext     
 
-If setted to 1 Ozzy will ignore extension when serching in its index for the
-right file to open.  Suppose that Ozzy has two entries in its database:
+Set this option to 1 Ozzy will ignore extension when serching in its index for
+the right file to open.  Suppose that Ozzy has two entries in its database:
 `/file.rb` and `/file.py` and this option is setted to 1: you can open any of
 these two file just using their filename: `file`. Ozzy will open the right file
 according to the current mode.
@@ -294,8 +297,8 @@ default: 1
 ### g:ozzy_scope
 
 Set this option to an absolute path in order to limit the scope of the whole
-Ozzy activity. That is, Ozzy will index and update only files under that path.
-See also `OzzyScope` command.
+Ozzy activity. That is, Ozzy will index, update and retrieve only files under
+that path.  See also `OzzyScope` command.
 
 default = ''
 
@@ -369,6 +372,15 @@ MIT
 
 
 ## Changelog
+
+**v0.9.1**
+* added new setting g:ozzy_db_path to set a custom database path.
+* fixed possible conflicts with other plugins.
+
+**v0.9.0**
+* new inspector related options: 'g:ozzy_filter_inspector_by_scope',
+  'g:ozzy_hide_scope_inspector', 'g:ozzy_show_env_inspector'.
+* new mappings in the inspector buffer: 's', 'x', 'z', 'e'.
 
 **v0.8.0**
 * new OzzyScope command.

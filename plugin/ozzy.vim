@@ -1,12 +1,13 @@
 " ============================================================================
 " File: ozzy.vim
-" Description: Quick files launcher
+" Description: Files launcher
 " Mantainer: Giacomo Comitti (https://github.com/gcmt)
 " Url: https://github.com/gcmt/ozzy.vim
 " License: MIT
-" Version: 0.8.0
-" Last Changed: 2 Nov 2012
+" Version: 0.9.1
+" Last Changed: 23 gen 2013
 " ============================================================================
+
 
 " init ----------------------------------------------------------- {{{
 
@@ -19,6 +20,7 @@ scriptencoding utf-8
 setlocal encoding=utf-8
 
 let g:ozzy_test_file = 'tests.py'
+" hide OzzyTest command by default
 if !exists('g:ozzy_debug')
     let g:ozzy_debug = 0
 endif
@@ -42,9 +44,9 @@ from itertools import groupby, chain, ifilter
 from operator import attrgetter, itemgetter, methodcaller
 # }}}
 
-# Utils ----------------------------------------------------------------- {{{
+# OzzyUtils ------------------------------------------------------------- {{{
 
-class Utils(object):
+class OzzyUtils(object):
     """Utility and helper functions."""
 
     @staticmethod
@@ -60,7 +62,7 @@ class Utils(object):
 
     @staticmethod
     def feedback(msg): # {{{
-        Utils.echom(u'[ozzy] ' + msg)
+        OzzyUtils.echom(u'[ozzy] ' + msg)
     # }}}
 
     @staticmethod
@@ -139,7 +141,7 @@ class Utils(object):
                 if fname.startswith(patt[:-2]):
                     return True
             elif patt.endswith(os.path.sep):
-                if Utils.is_sublist(patt.strip(sep).split(sep),
+                if OzzyUtils.is_sublist(patt.strip(sep).split(sep),
                                     target.strip(sep).split(sep)):
                     return True
             elif os.path.split(target)[1] == patt:
@@ -151,16 +153,16 @@ class Utils(object):
     @staticmethod
     def find_by_path(records, target): # {{{
         for r in records:
-            if Utils.setting('ignore_case', fmt=int):
+            if OzzyUtils.setting('ignore_case', fmt=int):
                 path = r.path.lower()
                 target = target.lower()
             else:
                 path = r.path
 
-            cond1 = r.path.startswith(Utils.setting('scope'))
+            cond1 = r.path.startswith(OzzyUtils.setting('scope'))
             cond2 = path.endswith(target)
             path_no_ext = os.path.splitext(path)[0]
-            cond3 = (Utils.setting('ignore_ext', fmt=bool)
+            cond3 = (OzzyUtils.setting('ignore_ext', fmt=bool)
                      and path_no_ext.endswith(target))
             if cond1 and (cond2 or cond3):
                 yield r
@@ -174,14 +176,14 @@ class Utils(object):
             fname = os.path.split(r.path)[1]
             fname_no_ext = os.path.splitext(fname)[0]
 
-            if Utils.setting('ignore_case', fmt=int):
+            if OzzyUtils.setting('ignore_case', fmt=int):
                 fname = fname.lower()
                 target = target.lower()
                 fname_no_ext = fname_no_ext.lower()
 
-            cond1 = r.path.startswith(Utils.setting('scope'))
+            cond1 = r.path.startswith(OzzyUtils.setting('scope'))
             cond2 = target == fname
-            cond3 = (Utils.setting('ignore_ext', fmt=bool)
+            cond3 = (OzzyUtils.setting('ignore_ext', fmt=bool)
                      and fname_no_ext == target)
             if cond1 and (cond2 or cond3):
                 yield r
@@ -192,8 +194,8 @@ class Utils(object):
         sep = os.path.sep
         t = target.strip(sep).split(sep)
         return [r for r in records
-                if (r.path.startswith(Utils.setting('scope'))
-                    and Utils.is_sublist(t, r.path.split(sep)))]
+                if (r.path.startswith(OzzyUtils.setting('scope'))
+                    and OzzyUtils.is_sublist(t, r.path.split(sep)))]
     # }}}
 
     @staticmethod
@@ -205,7 +207,7 @@ class Utils(object):
         'what_in_root' list.
         """
         if what_in_root is None:
-            what_in_root = Utils.setting('what_in_project_root')
+            what_in_root = OzzyUtils.setting('what_in_project_root')
 
         if path == os.path.sep:
             return None
@@ -213,7 +215,7 @@ class Utils(object):
             for d in os.listdir(path.decode('utf8')):
                 if d in what_in_root:
                     return path
-            return Utils.find_project_root(os.path.split(path)[0],
+            return OzzyUtils.find_project_root(os.path.split(path)[0],
                                            what_in_root)
     # }}}
 
@@ -225,7 +227,7 @@ class Utils(object):
            returned) in order to allow further ordering.
         """
         # r = [(distance, record), ...]
-        r = list(Utils.decorate_with_distance(records, cwd))
+        r = list(OzzyUtils.decorate_with_distance(records, cwd))
         r.sort(key=itemgetter(0), reverse=reverse) # sort by distance
         groups = groupby(r, key=itemgetter(0)) # group by distance
         return [map(itemgetter(1), g) for k, g in groups] # discard keys
@@ -293,7 +295,7 @@ class Utils(object):
         def mean(values):
             return sum(values) / len(values)
 
-        return [(mean(map(lambda x: Utils.seconds(ref-x.last_access), g)), g)
+        return [(mean(map(lambda x: OzzyUtils.seconds(ref-x.last_access), g)), g)
                 for g in groups]
     # }}}
 
@@ -306,68 +308,63 @@ class Utils(object):
             else:
                 if option in arglist:
                     return True
+                else: 
+                    return False
         except (IndexError, ValueError):
-            pass
-        return False
+            return None
     # }}}
 
 # }}}
 
-# DBProxy --------------------------------------------------------------- {{{
+# OzzyDBProxy ----------------------------------------------------------- {{{
 
-class DBProxy(object):
+class OzzyDBProxy(object):
     """Database proxy."""
 
-    def __init__(self, path): # {{{
-        self.schema = ("""
-            CREATE TABLE ozzy (
+    def __init__(self, path_db): # {{{
+        
+        self.SCHEMA = """
+            CREATE TABLE files_index (
                 path string primary key,
                 frequency integer not null,
-                last_access timestamp not null)
-            """)
+                last_access timestamp not null
+            );"""
 
-        missing_db = not os.path.exists(path)
-        self.conn = sqlite3.connect(path,
+        missing_db = not os.path.exists(path_db)
+        self.conn = sqlite3.connect(path_db,
             detect_types=sqlite3.PARSE_DECLTYPES)
+        self.Row = namedtuple('Row', "path frequency last_access")
 
-        if missing_db:
-            self.init_db()
-
-        # be aware of fields names: python keywords are forbidden
-        Row = namedtuple('Row', "path frequency last_access")
-        self.conn.row_factory = lambda cur, fields: Row(*fields)
+        if missing_db: 
+            self.conn.executescript(self.SCHEMA)
+            self.conn.commit()
     # }}}
 
-    def __contains__(self, path): # {{{
-        """To implement the 'in' operator behavior."""
-        query = "SELECT * FROM ozzy WHERE path=? LIMIT 1"
+    def __contains__(self, path): # {{{       
+        """Implements the 'in' operator behavior."""
+        query = "SELECT * FROM files_index WHERE path=?"
         r = self.conn.execute(query, (path,)).fetchone()
         return True if r else False
     # }}}
 
-    def init_db(self): # {{{
-        """Initialize the main database table."""
-        cur = self.conn.cursor()
-        cur.execute(self.schema)
-        self.conn.commit()
+    def all(self): # {{{      
+        """To get all rows."""
+        for row in self.conn.execute("SELECT * FROM files_index").fetchall():
+            yield self.Row(*row)
     # }}}
 
-    def all(self): # {{{
-        """To get all database records."""
-        for row in self.conn.execute("SELECT * FROM ozzy").fetchall():
-            yield row
-    # }}}
-
-    def get(self, path): # {{{
+    def get(self, path): # {{{       
         """To get a specific record given its path."""
-        sql = "SELECT * FROM ozzy WHERE path=?"
-        return self.conn.execute(sql, (path,)).fetchone()
+        sql = "SELECT * FROM files_index WHERE path=?"
+        row = self.conn.execute(sql, (path,)).fetchone()
+        if row:
+            return self.Row(*row)
     # }}}
 
-    def add(self, path, frequency, last_access): # {{{
+    def add(self, path, frequency, last_access): # {{{        
         """To add a new record."""
         try:
-            sql = "INSERT INTO ozzy VALUES (?, ?, ?)"
+            sql = "INSERT INTO files_index VALUES (?, ?, ?)"
             self.conn.execute(sql, (path, frequency, last_access))
         except:
             pass
@@ -375,10 +372,10 @@ class DBProxy(object):
             self.conn.commit()
     # }}}
 
-    def add_many(self, paths, frequency, last_access): # {{{
+    def add_many(self, paths, frequency, last_access): # {{{        
         """To add a bunch of new records at once."""
         try:
-            sql = "INSERT INTO ozzy VALUES (?, ?, ?)"
+            sql = "INSERT INTO files_index VALUES (?, ?, ?)"
             self.conn.executemany(sql,
                 [(path, frequency, last_access) for path in paths])
         except:
@@ -387,55 +384,52 @@ class DBProxy(object):
         self.conn.commit()
     # }}}
 
-    def update(self, path, frequency=None, last_access=None): # {{{
+    def update(self, path, frequency=None, last_access=None): # {{{      
         """To update attributes of an existing record."""
         if frequency and not last_access:
-            sql = "UPDATE ozzy SET frequency=frequency+? WHERE path=?"
+            sql = "UPDATE files_index SET frequency=frequency+? WHERE path=?"
             self.conn.execute(sql, (frequency, path))
-
         elif last_access and not frequency:
-            sql = "UPDATE ozzy SET last_access=? WHERE path=?"
+            sql = "UPDATE files_index SET last_access=? WHERE path=?"
             self.conn.execute(sql, (last_access, path))
-
         elif frequency and last_access:
-            sql = "UPDATE ozzy SET frequency=frequency+?, last_access=? WHERE path=?"
+            sql = "UPDATE files_index SET frequency=frequency+?, last_access=? WHERE path=?"
             self.conn.execute(sql, (frequency, last_access, path))
 
         self.conn.commit()
     # }}}
 
-    def delete(self, path): # {{{
+    def delete(self, path): # {{{        
         """To delete a record given its path."""
-        sql = "DELETE FROM ozzy WHERE path=?"
+        sql = "DELETE FROM files_index WHERE path=?"
         self.conn.execute(sql, (path,))
         self.conn.commit()
     # }}}
 
-    def delete_many(self, paths): # {{{
+    def delete_many(self, paths): # {{{       
         """To delete a bunch of records given their paths."""
-        sql = "DELETE FROM ozzy WHERE path=?"
+        sql = "DELETE FROM files_index WHERE path=?"
         self.conn.executemany(sql, [(path,) for path in paths])
         self.conn.commit()
     # }}}
 
-    def delete_all(self): # {{{
+    def delete_all(self): # {{{        
         """To delete all records from the database."""
-        self.conn.execute("DROP TABLE IF EXISTS ozzy")
+        self.conn.execute("DELETE FROM files_index")
         self.conn.commit()
-        self.init_db()
     # }}}
 
-    def close(self): # {{{
+    def close(self): # {{{      
         """To close the database connection."""
         self.conn.close()
     # }}}
 
 # }}}
 
-# Inspector ------------------------------------------------------------- {{{
+# OzzyInspector --------------------------------------------------------- {{{
 
-class Inspector(object):
-    """The inspector buffer."""
+class OzzyInspector(object):
+    """OzzyInspector definition."""
 
     def __init__(self, ozzy): # {{{
         self.ozzy = ozzy
@@ -447,7 +441,7 @@ class Inspector(object):
         self.last_path_under_cursor = ''
         self.mapper = {} # line to record mapper
 
-        mode = Utils.setting('mode')
+        mode = OzzyUtils.setting('mode')
         if mode == 'most frequent':
             self.order_by = 'frequency'
         elif mode == 'most recent':
@@ -466,7 +460,7 @@ class Inspector(object):
 
     def open(self, order_by=None, reverse_order=None, show_help=None, # {{{
              short_paths=None):
-        """To open the inspector buffer."""
+        """Opens the inspector buffer."""
         # update the inspector environment if something has changed
         if order_by is not None:
             self.order_by = order_by
@@ -500,25 +494,30 @@ class Inspector(object):
         b[:] = None
 
         if self.order_by == u'context':
-            groups = Utils.sort_by_distance(self.ozzy.db.all(),
+            groups = OzzyUtils.sort_by_distance(self.ozzy.db.all(),
                             reverse=not self.reverse_order)
 
-            records = Utils.sort_groups_by(groups, 'last_access',
+            records = OzzyUtils.sort_groups_by(groups, 'last_access',
                             flatten=True, reverse=self.reverse_order)
         else:
             records = sorted(self.ozzy.db.all(),
                              key=attrgetter(self.order_by),
                              reverse=self.reverse_order)
 
-        b.append('  >> Ozzy Inspector')
-        b.append('')
+        b.append('  >> Ozzy OzzyInspector (type ? for help)')
 
         if self.show_help:
             help = [
-                '  - help',
+                '',
+                '  ▸ help',
                 '    ----------------------------------',
                 '    q : quit inspector',
                 '    ? : toggle help',
+                '    s : set the scope to the directory who contains the file on the current line', 
+                '    g : set the global scope',
+                '    x : scope filtering: show only files in the current scope', 
+                '    z : hide the scope from paths (works only if scope filtering is active)', 
+                '    e : show/hide ozzy and inspector settings', 
                 '    p : toggle between absolute and relative-to-home paths',
                 '    f : order records by frequency',
                 '    a : order records by last access date and time',
@@ -535,16 +534,32 @@ class Inspector(object):
 
             for l in help:
                 b.append(l)
-        else:
-            b.append('  ▪ type ? for help')
 
         # print records
 
-        mode = Utils.setting('mode')
-        ext = 'ignore' if Utils.setting('ignore_ext', fmt=bool) else 'consider'
-        freeze = 'on' if Utils.setting('freeze', fmt=bool) else 'off'
+        mode = OzzyUtils.setting('mode')
 
-        s = Utils.setting('scope')
+        if OzzyUtils.setting('ignore_ext', fmt=bool):
+            extensions = 'ignore'
+        else:
+            extensions = 'consider'
+
+        if OzzyUtils.setting('freeze', fmt=bool):
+            freeze = 'on'
+        else:
+            freeze = 'off'
+
+        if OzzyUtils.setting('filter_inspector_by_scope', fmt=bool):
+            filter_by_scope = 'on'
+        else:
+            filter_by_scope = 'off'
+
+        if OzzyUtils.setting('hide_scope_inspector', fmt=bool):
+            hide_scope = 'on'
+        else:
+            hide_scope = 'off'
+
+        s = OzzyUtils.setting('scope')
         scope = s if s else 'global'
         if self.short_paths:
             scope = scope.replace(os.path.expanduser('~'), '~')
@@ -568,20 +583,34 @@ class Inspector(object):
         elif self.order_by == u'last_access':
             order = _make_order('access time', 'most recent', 'least recent')
 
-        b.append('')
-        b.append('  ozzy status = mode:{0} | freeze:{1} | extensions:{2}'
-                 .format(mode, freeze, ext))
-        b.append('  order = {type}, {rev} first'.format(**order))
-        b.append('  scope = {0}'.format(scope))
-        b.append('  cwd = {0}'.format(cwd))
+        if OzzyUtils.setting('show_env_inspector', fmt=bool):
+            b.append('')
+            b.append('  + ozzy settings:')
+            b.append('  ├─ mode ......... {0}'.format(mode))
+            b.append('  ├─ freeze ....... {0}'.format(freeze))
+            b.append('  ├─ extensions ... {0}'.format(extensions))
+            b.append('  ├─ scope ........ {0}'.format(scope))
+            b.append('  └─ cwd .......... {0}'.format(cwd))
+            b.append('')
+            b.append('  + inspector settings:')
+            b.append('  ├─ order ........ {type}, {rev} first'.format(**order))
+            b.append('  ├─ filter scope . {0}'.format(filter_by_scope))
+            b.append('  └─ hide scope ... {0}'.format(hide_scope))
 
         b.append('')
         b.append("  last access          freq   dist   file path")
         b.append("  -------------------  -----  -----  ---------------")
 
-        for dist, r in Utils.decorate_with_distance(records):
+        if filter_by_scope == 'on':
+            records = [r for r in records 
+                       if r.path.startswith(OzzyUtils.setting('scope'))]
+
+        for dist, r in OzzyUtils.decorate_with_distance(records):
             last_access = r.last_access.strftime('%Y-%m-%d %H:%M:%S')
-            if self.short_paths:
+            scope = OzzyUtils.setting('scope')
+            if filter_by_scope == 'on' and hide_scope == 'on' and scope != '':
+                path = r.path.replace(scope + os.path.sep, '')
+            elif self.short_paths:
                 path = r.path.replace(os.path.expanduser('~'), '~')
             else:
                 path = r.path
@@ -614,15 +643,19 @@ class Inspector(object):
         self.insert_line_indicator()
     # }}}
 
-    def map_keys(self): # {{{
+    def map_keys(self): # {{{           
         """To create mappings for the inpector buffer."""
         mappings = (
-            'q :bd',
+            'q :b#<BAR>bd#', # close buffer without closing the window
             'f :python ozzy.insp.open(order_by=u"frequency")',
             'a :python ozzy.insp.open(order_by=u"last_access")',
             'c :python ozzy.insp.open(order_by=u"context")',
             'o :python ozzy.insp.open_record()',
             'b :python ozzy.insp.open_record(bg=True)',
+            's :python ozzy.insp.set_scope()',
+            'x :python ozzy.insp.toggle_filter_scope()',
+            'z :python ozzy.insp.toggle_hide_scope()',
+            'e :python ozzy.insp.toggle_show_env()',
            'dd :python ozzy.insp.delete_records()',
             '+ :python ozzy.insp.update_freq_record(1)',
             '- :python ozzy.insp.update_freq_record(-1)',
@@ -704,8 +737,7 @@ class Inspector(object):
 
     def get_path_on_line(self, line=None): # {{{
         """To get the path mapped with the given line."""
-        if line is None:
-            line = vim.current.window.cursor[0]
+        line = line if line else vim.current.window.cursor[0]
         return self.mapper.get(line, None)
     # }}}
 
@@ -729,6 +761,7 @@ class Inspector(object):
             vim.command('delmarks <>')
             self.cursor = list(start)
 
+        self.follow_record()
         self.update_rendering()
     # }}}
 
@@ -763,13 +796,48 @@ class Inspector(object):
             if bg:
                 self.ozzy.update_buffer(path)
                 vim.command('bad {0}'.format(
-                    Utils.escape_spaces(path).encode('utf-8')))
+                    OzzyUtils.escape_spaces(path).encode('utf-8')))
                 self.follow_record()
                 self.update_rendering()
             else:
                 vim.command('e {0}'.format(
-                    Utils.escape_spaces(path).encode('utf-8')))
+                    OzzyUtils.escape_spaces(path).encode('utf-8')))
                 pass
+    # }}}
+
+    def set_scope(self): # {{{
+        """Sets the scope to the directory who contains the file (record) on 
+        the current line."""
+        path = self.get_path_on_line()
+        if path:
+            OzzyUtils.let('scope', value=os.path.split(path)[0])
+
+        self.follow_record()
+        self.update_rendering()
+    # }}}
+
+    def toggle_filter_scope(self): # {{{
+        OzzyUtils.let('filter_inspector_by_scope',
+            value=not OzzyUtils.setting('filter_inspector_by_scope', fmt=bool))
+
+        self.follow_record()
+        self.update_rendering()
+    # }}}
+
+    def toggle_hide_scope(self): # {{{
+        OzzyUtils.let('hide_scope_inspector',
+            value=not OzzyUtils.setting('hide_scope_inspector', fmt=bool))
+
+        self.follow_record()
+        self.update_rendering()  
+    # }}}
+
+    def toggle_show_env(self): # {{{
+        OzzyUtils.let('show_env_inspector',
+            value=not OzzyUtils.setting('show_env_inspector', fmt=bool))
+
+        self.follow_record()
+        self.update_rendering()  
     # }}}
 
 # }}}
@@ -779,23 +847,31 @@ class Inspector(object):
 class Ozzy(object):
     """Main ozzy class."""
 
-    def __init__(self): # {{{
-        # set the path for the database location
+    def __init__(self): # {{{           
+        self.init_settings()
+
         self.PLUGIN_PATH = vim.eval("expand('<sfile>:h')").decode('utf8')
-        self.DB_NAME = u'ozzy.db'
-        self.DB_PATH = os.path.join(self.PLUGIN_PATH, self.DB_NAME)
+        self.SCHEMA_PATH = os.path.join(self.PLUGIN_PATH, 'schema.sql')
+
+        # set the path for the database location
+        user_db_path = OzzyUtils.setting('db_path')
+        if user_db_path:
+            self.DB_PATH = os.path.join(user_db_path, 'ozzy.db')
+            OzzyUtils.let('db_path', user_db_path)
+        else:
+            self.DB_PATH = os.path.join(self.PLUGIN_PATH, 'ozzy.db')
+
         self.opened_buffers = [] # to keep track of opened buffers
         self.MODES = [u'most frequent', u'most recent', u'context']
-        self.db = DBProxy(self.DB_PATH)
-        self.init_settings()
-        self.check_user_settings()
-        self.insp = Inspector(self)
-        self.scope_default = Utils.setting('scope')
+        self.db = OzzyDBProxy(self.DB_PATH)
+        self.insp = OzzyInspector(self)
+        self.scope_default = OzzyUtils.setting('scope')
     # }}}
 
     def init_settings(self): # {{{
         settings = {
             'mode' : 'most frequent',
+            'db_path': '',
             'freeze' : 0,
             'ignore_ext' : 1,
             'ignore' : [],
@@ -803,6 +879,9 @@ class Ozzy(object):
             'scope' : '',
             'enable_shortcuts' : 1,
             'max_num_files_to_open' : 0,
+            'filter_inspector_by_scope' : 0,
+            'hide_scope_inspector' : 0,
+            'show_inspector_env' : 1,
             'ignore_case' : 0,
             'what_in_project_root' : ['.git', '.hg', '.svn'],
             'most_frequent_flag' : 'F',
@@ -814,20 +893,7 @@ class Ozzy(object):
 
         for s in settings:
             if vim.eval("!exists('g:ozzy_{0}')".format(s)) == '1':
-                Utils.let(s, settings[s])
-    # }}}
-
-    def check_user_settings(self): # {{{
-        """To give unobtrusive feedback about wrong options values."""
-        if any((
-            Utils.setting('mode') not in self.MODES,
-            Utils.setting('max_num_files_to_open', fmt=int) < 0,
-            Utils.setting('keep', fmt=int) < 0,
-            )):
-
-            msg = ("some setting has not been setted properly. "
-                   "Ozzy might not work as expected.")
-            Utils.feedback(msg)
+                OzzyUtils.let(s, settings[s])
     # }}}
 
     def remove_from_db_if(self, func, getter): # {{{
@@ -839,36 +905,43 @@ class Ozzy(object):
     # }}}
 
     def print_mode(self): # {{{
-        Utils.feedback(u'mode: {0}'.format(Utils.setting('mode')))
+        OzzyUtils.feedback(u'mode: {0}'.format(OzzyUtils.setting('mode')))
     # }}}
 
     def print_scope(self): # {{{
-        scope = Utils.setting('scope')
+        scope = OzzyUtils.setting('scope')
         if scope == '':
-            Utils.feedback('scope: global')
+            OzzyUtils.feedback('scope: global')
         else:
-            Utils.feedback('scope: {0}'.format(scope))
+            OzzyUtils.feedback('scope: {0}'.format(scope))
     # }}}
 
     def print_freeze_status(self): # {{{
-        if Utils.setting('freeze', fmt=bool):
-            Utils.feedback('freeze on')
+        if OzzyUtils.setting('freeze', fmt=bool):
+            OzzyUtils.feedback('freeze on')
         else:
-            Utils.feedback('freeze off')
+            OzzyUtils.feedback('freeze off')
     # }}}
 
     def print_extension_status(self): # {{{
-        if Utils.setting('ignore_ext', fmt=bool):
-            Utils.feedback('ignore extensions')
+        if OzzyUtils.setting('ignore_ext', fmt=bool):
+            OzzyUtils.feedback('ignore extensions')
         else:
-            Utils.feedback('consider extensions')
+            OzzyUtils.feedback('consider extensions')
+    # }}}
+    
+    def print_fiter_inspector_status(self): # {{{
+        if OzzyUtils.setting('filter_inspector_by_scope', fmt=bool):
+            OzzyUtils.feedback('filter inspector by scope: on')
+        else:
+            OzzyUtils.feedback('filter inspector by scope: off')
     # }}}
 
     def db_maintenance(self): # {{{
         """To remove deleted files or files not recently opened."""
         l = []
         for r in self.db.all():
-            ozzy_keep = Utils.setting('keep', fmt=int)
+            ozzy_keep = OzzyUtils.setting('keep', fmt=int)
             cond1 = not os.path.exists(r.path)  # remove non exitent files
             cond2 = (ozzy_keep > 0 and (dt.now() - r.last_access >
                                         datetime.timedelta(days=ozzy_keep)))
@@ -880,7 +953,7 @@ class Ozzy(object):
 
     def remove_unlisted_buffers(self): # {{{
         """To remove unlisted buffer from the internal buffer list."""
-        listed_buf = Utils.listed_buffers()
+        listed_buf = OzzyUtils.listed_buffers()
         for buf in self.opened_buffers:
             if buf not in listed_buf:
                 self.opened_buffers.remove(buf)
@@ -904,15 +977,15 @@ class Ozzy(object):
         pitfalls:
         1. how to deal with last access time when using Counter?
         """
-        if Utils.setting('freeze', fmt=bool):
+        if OzzyUtils.setting('freeze', fmt=bool) or self.insp.opened():
             return
 
-        if bufname is None and not self.insp.opened():
+        if bufname is None:
             bufname = vim.current.buffer.name.decode('utf-8')
 
-        if (bufname.startswith(Utils.setting('scope'))
+        if (bufname.startswith(OzzyUtils.setting('scope'))
             and bufname not in self.opened_buffers
-            and not Utils.match_patterns(bufname, Utils.setting('ignore'))):
+            and not OzzyUtils.match_patterns(bufname, OzzyUtils.setting('ignore'))):
 
             if bufname in self.db:
                 self.db.update(bufname, +1, dt.now())
@@ -926,28 +999,29 @@ class Ozzy(object):
         self.db.close()
     # }}}
 
-    ## interface functions
+    ## interface methods
 
     def OzzyInspect(self): # {{{
         """Open the database inpsector."""
         self.insp.open()
     # }}}
 
-    def OzzyOpen(self, target): # {{{
+    def OzzyOpen(self, arg): # {{{
         """Open the given file according to the current mode.
 
         If a directory name is given, all files in that directory are opened.
         """
-        target = target.strip().decode('utf8')
+        target = arg.decode('utf8')
+
         attr = (u'last_access'
-                if Utils.setting('mode') in [u'most recent', u'context']
+                if OzzyUtils.setting('mode') in [u'most recent', u'context']
                 else u'frequency')
 
         if target.endswith(os.path.sep):
             # open all files in the given directory
-            matches = Utils.find_paths_in_directory(self.db.all(), target)
+            matches = OzzyUtils.find_paths_in_directory(self.db.all(), target)
 
-            groups = Utils.group_by_path(matches, target.strip(os.path.sep))
+            groups = OzzyUtils.group_by_path(matches, target.strip(os.path.sep))
 
             # For each group, this method:
             # 1. takes all its records
@@ -956,7 +1030,7 @@ class Ozzy(object):
             # 3. computes the mean of all the time deltas
             # 4. decorate each group with the relative mean
             #
-            _groups = Utils.decorate_groups_mean(groups, dt.now())
+            _groups = OzzyUtils.decorate_groups_mean(groups, dt.now())
 
             # select the group who has the minimum mean
             if _groups:
@@ -964,7 +1038,7 @@ class Ozzy(object):
             else:
                 m = []
 
-            n = Utils.setting('max_num_files_to_open', fmt=int)
+            n = OzzyUtils.setting('max_num_files_to_open', fmt=int)
             if n > 0:
                 paths = [r.path for r in
                          nlargest(n, m, key=attrgetter(attr))]
@@ -975,45 +1049,44 @@ class Ozzy(object):
                 for p in paths:
                     self.update_buffer(p)
                     vim.command('99argadd {0}'.format(
-                        Utils.escape_spaces(p).encode('utf-8')))
+                        OzzyUtils.escape_spaces(p).encode('utf-8')))
                 self.insp.update_rendering()
-                Utils.feedback(u'{0} files opened'.format(len(paths)))
+                OzzyUtils.feedback(u'{0} files opened'.format(len(paths)))
             else:
-                Utils.feedback(u'nothing found')
+                OzzyUtils.feedback(u'nothing found')
         else:
             # open a single file
 
             if os.path.sep in target:
-                matches = list(Utils.find_by_path(self.db.all(), target))
+                matches = list(OzzyUtils.find_by_path(self.db.all(), target))
 
-            elif Utils.setting('mode') == u'context':
+            elif OzzyUtils.setting('mode') == u'context':
                 # sort and group records by distance
-                groups = Utils.sort_by_distance(
-                            Utils.find_by_fname(self.db.all(), target))
+                groups = OzzyUtils.sort_by_distance(
+                            OzzyUtils.find_by_fname(self.db.all(), target))
 
-                matches = Utils.sort_groups_by(groups, 'last_access',
+                matches = OzzyUtils.sort_groups_by(groups, 'last_access',
                                                flatten=True)
                 if matches:
                     vim.command('e {0}'.format(
-                        Utils.escape_spaces(matches[0].path).encode('utf8')))
+                        OzzyUtils.escape_spaces(matches[0].path).encode('utf8')))
                 else:
-                    Utils.feedback(u'nothing found')
+                    OzzyUtils.feedback(u'nothing found')
                 return
 
             else:
-                matches = list(Utils.find_by_fname(self.db.all(), target))
+                matches = list(OzzyUtils.find_by_fname(self.db.all(), target))
 
             if matches:
                 record = max(matches, key=attrgetter(attr))
                 vim.command('e {0}'.format(
-                    Utils.escape_spaces(record.path).encode('utf8')))
+                    OzzyUtils.escape_spaces(record.path).encode('utf8')))
             else:
-                Utils.feedback(u'nothing found')
+                OzzyUtils.feedback(u'nothing found')
     # }}}
 
-    def OzzyRemove(self, pattern): # {{{
+    def OzzyRemove(self, patt): # {{{
         """To remove records from the database according to the given pattern."""
-        patt = pattern.strip()
         if patt == '%':
             patt = os.path.split(vim.current.buffer.name)[1]
             nremoved = self.remove_from_db_if(
@@ -1037,7 +1110,7 @@ class Ozzy(object):
                 lambda path: os.path.split(path)[1] == patt, attrgetter('path'))
 
         self.insp.update_rendering()
-        Utils.feedback(u'{0} files removed'.format(nremoved))
+        OzzyUtils.feedback(u'{0} files removed'.format(nremoved))
     # }}}
 
     def OzzyKeepLast(self, args): # {{{
@@ -1049,12 +1122,12 @@ class Ozzy(object):
         minutes/hours/days/weeks is removed.
         """
         try:
-            n, what = args.strip().split()
+            n, what = args.split()
             n = int(n)
             if n < 0:
                 raise ValueError
         except ValueError:
-            Utils.feedback(u'bad argument!')
+            OzzyUtils.feedback(u'bad argument!')
             return
 
         if what in ['weeks', 'week', 'w']:
@@ -1066,7 +1139,7 @@ class Ozzy(object):
         elif what in ['minutes', 'minute', 'min', 'mins', 'm']:
             delta = {'minutes': n}
         else:
-            Utils.feedback(u'bad argument!')
+            OzzyUtils.feedback(u'bad argument!')
             return
 
         nremoved = self.remove_from_db_if(
@@ -1076,7 +1149,7 @@ class Ozzy(object):
 
         self.insp.update_rendering()
 
-        Utils.feedback('{0} files removed'.format(nremoved))
+        OzzyUtils.feedback('{0} files removed'.format(nremoved))
     # }}}
 
     def OzzyReset(self): # {{{
@@ -1085,9 +1158,9 @@ class Ozzy(object):
         vim.command('redraw') # to clear the command line
         if answer in ['y', 'Y', 'yes', 'Yes']:
             self.db.delete_all()
-            Utils.feedback(u'database successfully cleared!')
+            OzzyUtils.feedback(u'database successfully cleared!')
         else:
-            Utils.feedback(u'database untouched!')
+            OzzyUtils.feedback(u'database untouched!')
 
         self.insp.update_rendering()
     # }}}
@@ -1104,19 +1177,19 @@ class Ozzy(object):
 
         # extract options from the argument list
 
-        opt = Utils.get_cmdline_opt('-a', arglist)
+        opt = OzzyUtils.get_cmdline_opt('-a', arglist)
         if opt:
             add = opt.strip(',').split(',')
         else:
             add = []
 
-        opt = Utils.get_cmdline_opt('-i', arglist)
+        opt = OzzyUtils.get_cmdline_opt('-i', arglist)
         if opt:
             ignore = opt.strip(',').split(',')
         else:
             ignore = []
 
-        add_hidden_dirs = Utils.get_cmdline_opt('-h', arglist, expect_arg=False)
+        add_hidden_dirs = OzzyUtils.get_cmdline_opt('-h', arglist, expect_arg=False)
 
         topdir = arglist[0]
         if topdir == '.':
@@ -1126,16 +1199,16 @@ class Ozzy(object):
             topdir = os.path.split(vim.eval('getcwd()'))[0]
 
         elif topdir == '...':
-            opt = Utils.get_cmdline_opt('-p', arglist)
+            opt = OzzyUtils.get_cmdline_opt('-p', arglist)
             if opt:
                 what_in_root = opt.strip(',').split(',')
             else:
-                what_in_root = Utils.setting('what_in_project_root')
+                what_in_root = OzzyUtils.setting('what_in_project_root')
 
-            topdir = Utils.find_project_root(vim.eval('getcwd()'), what_in_root)
+            topdir = OzzyUtils.find_project_root(vim.eval('getcwd()'), what_in_root)
 
             if not topdir:
-                Utils.feedback(u'project root not found')
+                OzzyUtils.feedback(u'project root not found')
                 return
 
         # find all files
@@ -1149,14 +1222,14 @@ class Ozzy(object):
                     for f in files:
                         path = os.path.join(root, f)
 
-                        if (not Utils.match_patterns(path, Utils.setting('ignore'))
+                        if (not OzzyUtils.match_patterns(path, OzzyUtils.setting('ignore'))
                             and path not in self.db):
 
                             if ((not ignore
-                                or not Utils.match_patterns(path, ignore))
+                                or not OzzyUtils.match_patterns(path, ignore))
                                 and
                                 (not add
-                                or Utils.match_patterns(path, add))):
+                                or OzzyUtils.match_patterns(path, add))):
 
                                 paths.append(path)
 
@@ -1167,21 +1240,20 @@ class Ozzy(object):
                 vim.command('redraw') # to clear the command line
                 if answer in ['y', 'Y', 'yes', 'Yes']:
                     self.db.add_many(paths, 1, dt.now())
-                    Utils.feedback('{0} files successfully added!'.format(len(paths)))
+                    OzzyUtils.feedback('{0} files successfully added!'.format(len(paths)))
                 else:
-                    Utils.feedback(u'no files added!')
+                    OzzyUtils.feedback(u'no files added!')
             else:
-                Utils.feedback(u'nothig found')
+                OzzyUtils.feedback(u'nothig found')
 
             self.insp.update_rendering()
 
         else:
-            Utils.feedback(u'directory not found')
+            OzzyUtils.feedback(u'directory not found')
 
     # }}}
 
-    def OzzyScope(self, args): # {{{
-        scope = args.strip()
+    def OzzyScope(self, scope): # {{{
         if not scope:
             s = self.scope_default
         elif scope == '.':
@@ -1189,25 +1261,25 @@ class Ozzy(object):
         elif scope == '..':
             s = os.path.split(vim.eval('getcwd()'))[0]
         elif scope == '...':
-            opt = Utils.get_cmdline_opt('-p', args.split())
+            opt = OzzyUtils.get_cmdline_opt('-p', args.split())
             if opt:
                 what_in_root = opt.strip(',').split(',')
             else:
-                what_in_root = Utils.setting('what_in_project_root')
+                what_in_root = OzzyUtils.setting('what_in_project_root')
 
-            s = Utils.find_project_root(vim.eval('getcwd()'), what_in_root)
+            s = OzzyUtils.find_project_root(vim.eval('getcwd()'), what_in_root)
 
             if not s:
-                Utils.feedback(u'project root not found')
+                OzzyUtils.feedback(u'project root not found')
                 return
         else:
             if os.path.exists(scope):
                 s = scope
             else:
-                Utils.feedback('path does not exist')
+                OzzyUtils.feedback('path does not exist')
                 return
 
-        Utils.let('scope', s)
+        OzzyUtils.let('scope', s)
         self.print_scope()
         self.insp.update_rendering()
     # }}}
@@ -1215,20 +1287,20 @@ class Ozzy(object):
     def ToggleMode(self): # {{{
         """To toggle between available modes."""
         # update inspector attribute to reflect this change when its opened
-        curr_index = self.MODES.index(Utils.setting('mode'))
+        curr_index = self.MODES.index(OzzyUtils.setting('mode'))
         if curr_index == len(self.MODES) - 1:
             next_mode = self.MODES[0]
         else:
             next_mode = self.MODES[curr_index + 1]
 
-        Utils.let(u'mode', next_mode)
+        OzzyUtils.let(u'mode', next_mode)
         self.insp.update_rendering()
         self.print_mode()
     # }}}
 
     def ToggleFreeze(self): # {{{
         """To toggle the freeze status."""
-        Utils.let(u'freeze', value=not Utils.setting('freeze', fmt=bool))
+        OzzyUtils.let(u'freeze', value=not OzzyUtils.setting('freeze', fmt=bool))
 
         self.insp.update_rendering()
         self.print_freeze_status()
@@ -1236,7 +1308,8 @@ class Ozzy(object):
 
     def ToggleExtension(self): # {{{
         """To toggle the consider/ignore extension status."""
-        Utils.let(u'ignore_ext', value=not Utils.setting('ignore_ext', fmt=bool))
+        OzzyUtils.let(u'ignore_ext', 
+                  value=not OzzyUtils.setting('ignore_ext', fmt=bool))
 
         self.insp.update_rendering()
         self.print_extension_status()
@@ -1246,14 +1319,14 @@ class Ozzy(object):
 # ---------------------------------------------------------
     def _test(self): # {{{
         """Executes tests for Ozzy. See OzzyTest command."""
-        fname = Utils.setting('test_file')
+        fname = OzzyUtils.setting('test_file')
         path = os.path.join(self.PLUGIN_PATH, fname)
         if os.path.exists(path):
             vim.command('pyfile ' + path)
             test = Test()
             test.run()
         else:
-            Utils.feedback('test file not found')
+            OzzyUtils.feedback('test file not found')
     # }}}
 
 # }}}
@@ -1262,26 +1335,26 @@ ozzy = Ozzy()
 
 END
 
-" Cmdline_completion ---------------------------------------------------- {{{
+" OzzyCmdlineCompletion ------------------------------------------------- {{{
 
-function! Cmdline_completion(seed, cmdline, curpos)
+function! OzzyCmdlineCompletion(seed, cmdline, curpos)
 python << END
 seed = vim.eval('a:seed').decode('utf-8')
 
 def _matches(seed, func=lambda x: x):
     return [r for r in ozzy.db.all()
-            if (r.path.startswith(Utils.setting('scope'))
+            if (r.path.startswith(OzzyUtils.setting('scope'))
                 and func(os.path.split(r.path)[1]).startswith(func(seed)))]
 
-if Utils.setting('ignore_case', fmt=int):
+if OzzyUtils.setting('ignore_case', fmt=int):
     matches = _matches(seed, func=methodcaller('lower'))
 else:
     matches = _matches(seed)
 
-if Utils.setting('mode') == u'context':
+if OzzyUtils.setting('mode') == u'context':
     # sort and group records by distance
-    groups = Utils.sort_by_distance(matches)
-    lst = Utils.sort_groups_by(groups, 'last_access', flatten=True)
+    groups = OzzyUtils.sort_by_distance(matches)
+    lst = OzzyUtils.sort_groups_by(groups, 'last_access', flatten=True)
     compl = [os.path.split(r.path)[1] for r in lst] # get only filenames
 
     # move the current buffer name to the end of the list if present
@@ -1296,7 +1369,7 @@ else:
                     reverse=True)]
 
 vim.command("let g:ozzy_completions = []")
-for c in Utils.remove_dupes(compl):
+for c in OzzyUtils.remove_dupes(compl):
     vim.eval("add(g:ozzy_completions, '{0}')"
              .format(c.encode('utf-8')))
 
@@ -1351,10 +1424,10 @@ augroup END
 " commands -------------------------------------------------------------- {{{
 
 command! OzzyInspect python ozzy.OzzyInspect()
-command! -nargs=1 -complete=customlist,Cmdline_completion Ozzy python ozzy.OzzyOpen(<q-args>)
+command! -nargs=1 -complete=customlist,OzzyCmdlineCompletion Ozzy python ozzy.OzzyOpen(<q-args>)
 command! -nargs=+ OzzyAddDirectory python ozzy.OzzyAddDirectory(<q-args>)
 
-command! -nargs=1 -complete=customlist,Cmdline_completion OzzyRemove python ozzy.OzzyRemove(<q-args>)
+command! -nargs=1 -complete=customlist,OzzyCmdlineCompletion OzzyRemove python ozzy.OzzyRemove(<q-args>)
 command! -nargs=? OzzyScope python ozzy.OzzyScope(<q-args>)
 command! -nargs=+ OzzyKeepLast python ozzy.OzzyKeepLast(<q-args>)
 command! OzzyReset python ozzy.OzzyReset()
@@ -1366,8 +1439,8 @@ command! OzzyToggleExtension python ozzy.ToggleExtension()
 if g:ozzy_enable_shortcuts
     command! Oi python ozzy.OzzyInspect()
     command! -nargs=+ Oadd python ozzy.OzzyAddDirectory(<q-args>)
-    command! -nargs=1 -complete=customlist,Cmdline_completion O python ozzy.OzzyOpen(<q-args>)
-    command! -nargs=1 -complete=customlist,Cmdline_completion Orm python ozzy.OzzyRemove(<q-args>)
+    command! -nargs=1 -complete=customlist,OzzyCmdlineCompletion O python ozzy.OzzyOpen(<q-args>)
+    command! -nargs=1 -complete=customlist,OzzyCmdlineCompletion Orm python ozzy.OzzyRemove(<q-args>)
     command! -nargs=? Oscope python ozzy.OzzyScope(<q-args>)
     command! -nargs=+ Okeep python ozzy.OzzyKeepLast(<q-args>)
     command! Orst python ozzy.OzzyReset()
