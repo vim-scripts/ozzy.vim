@@ -1,0 +1,86 @@
+
+# CHANGELOG
+
+v2.0
+
+	- Add a brand new interface for the Ozzy command.
+
+v1.0
+
+  - major revision: removed all superfluous functionalities. Now only Ozzy,
+	OzzyReset, OzzyInspect and other minor commands and remain active.
+
+v0.9.1
+
+  - added new setting g:ozzy_db_path to set a custom database path.
+  - fixed possible conflicts with other plugins.
+
+v0.9
+
+  - new inspector related options: 'g:ozzy_filter_inspector_by_scope',
+    'g:ozzy_hide_scope_inspector', 'g:ozzy_show_env_inspector'.
+  - new mappings in the inspector buffer: 's', 'x', 'z', 'e'.
+
+v0.8
+
+  - new OzzyScope command.
+  - backward incompatibility issue: 'most_recent' and 'most_frequent' modes renamed respectively to 
+    'most recent' and 'most frequent'. Removed 'g:   ozzy_open_files_recursively' option.
+
+v0.7.2
+
+  - fixed some behavior issues with OzzyAddDirectory, OzzyOpen commands and in the inspector buffer.
+
+v0.7.1
+
+  - added useful information in the inspector buffer.
+  - more intelligent command line completion.
+  - in 'by distance' ordering files that have te same relative distance are ordered by last access time.  
+
+v0.7
+
+  - better memory management.  
+  - support for filenames that contain non english characters.
+  - new arguments '..' and '...' for the OzzyAddDirectory command.
+  - new argument '%' for the OzzyRemove command.
+  - new 'c', '*' and '_' mappings in the Inspector buffer.
+  - command line completions can be ordered by relative distance to the cwd.
+  - minor bug fixes.
+  - backward incompatibility issue: the database managed by this version of Ozzy is no more compatible with databases created in previous versions. 
+
+v0.6.1
+
+  - improved performances. 
+  - better cursor management inside the Inspector buffer.  
+  - fixed bug: inconsistent internal buffers management.
+
+v0.6
+
+  - now Ozzy opens all files recursively when using the Ozzy command with a directory name as argument.   
+  - fixed bugs: error message using OzzyKeepLast command.  
+
+v0.5
+
+  - added OzzyAddDirectory command to quickly add to the database all files contained into a given directory. 
+  - added case insensitive files opening and command line completion.
+  - fixed minor bugs.
+
+v0.4
+
+  - improved command line completion.
+  - added new mode 'context'.
+  - fixed bugs: error when opening a file with spaces.
+
+v0.3
+
+  - added ability to open multiple files at once.
+  - fixed bugs.
+
+v0.2
+
+  - added command line completion.
+  - fixed bugs.
+
+v0.1
+
+  - first stable release.      
