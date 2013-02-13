@@ -1,6 +1,6 @@
 *ozzy.txt* *ozzy*
 
-                                 Ozzy v2.0 
+                                Ozzy v2.0.1 
                                      ~ 
                               Reference Manual
 

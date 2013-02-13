@@ -1,9 +1,11 @@
 # Ozzy.vim
 
-**v2.0**
+**v2.0.1**
 
 Open your files from wherever you are. If you have edited a file at least once
-then you open that file using just its name.
+then you can open that file using just its name.
+
+![Screenshot](/extra/screenshot.png "A view of the launcher")   
 
 
 ## Requirements
@@ -14,7 +16,8 @@ then you open that file using just its name.
 
 ## Installation
 
-Use Pathogen or Vundle
+Extract the content of the folder into the `$HOME/.vim` directory or use your favourite
+package manager.                          
 
 
 ## Commands

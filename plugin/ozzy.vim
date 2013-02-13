@@ -57,18 +57,18 @@ let g:ozzy_prompt = get(g:, 'ozzy_prompt', ' ❯ ')
 " Create the plugin object
 let py_module = fnameescape(globpath(&runtimepath, 'plugin/ozzy.py'))
 exe 'pyfile ' . py_module
-python ozzy = Ozzy()
+python ozzy_plugin = Ozzy()
 
 
 " Commands
-command! Ozzy py ozzy.Open()
-command! OzzyReset py ozzy.Reset()
-command! -nargs=1 OzzyIndex py ozzy.Index(<q-args>)
+command! Ozzy py ozzy_plugin.Open()
+command! OzzyReset py ozzy_plugin.Reset()
+command! -nargs=1 OzzyIndex py ozzy_plugin.Index(<q-args>)
 
 
 " Autocommands
 augroup ozzy_plugin
     au!
-    au BufReadPost,BufNewFile,BufCreate,BufAdd * python ozzy.update_buffer()
-    au VimLeave * python ozzy.close()
+    au BufReadPost,BufNewFile,BufCreate,BufAdd * python ozzy_plugin.update_buffer()
+    au VimLeave * python ozzy_plugin.close()
 augroup END

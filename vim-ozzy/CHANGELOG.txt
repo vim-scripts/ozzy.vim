@@ -1,6 +1,10 @@
 
 # CHANGELOG
 
+v2.0.1
+
+	- Fix issues with database creation on linux platforms.
+
 v2.0
 
 	- Add a brand new interface for the Ozzy command.

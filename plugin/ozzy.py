@@ -47,9 +47,8 @@ class Ozzy(object):
         if sys.platform == 'darwin':
             return (os.path.expanduser('~') +
                     '/Library/Application Support/Ozzy')
-
         elif sys.platform == 'linux2':
-            return '/var/lib/ozzy'  # FIX: not sure
+            return os.path.expanduser('~') + '/.ozzy'
 
     def should_ignore(self, bufname):
         """To ingnore some type of files."""
