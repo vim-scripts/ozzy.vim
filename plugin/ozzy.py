@@ -90,39 +90,9 @@ class Ozzy(object):
         """To perform some cleanup actions."""
         self.data.close()
 
-    ## INTERFACE METHODS
-
     def Open(self):
         """To open the launcher."""
         self.launcher.open()
-
-    def Index(self, args):
-        """To index the current directory."""
-
-        exts = args.strip(',').split(',')
-        candidates = []
-        for root, dirs, files in os.walk(self.misc.cwd()):
-            for f in files:
-
-                if (os.path.splitext(f)[1][1:] in exts
-                    and f not in self.settings.get('ignore')):
-
-                    path = os.path.join(root, f)
-                    if path not in self.data.db:
-                        candidates.append(path)
-
-        msg = ("input('I''m going to add {0} files, are you sure? (yN): ')"
-               .format(len(candidates)))
-        answer = vim.eval(msg)
-        self.misc.redraw()  # to clear the command line
-        if answer in ['y', 'Y', 'yes', 'Yes', 'sure']:
-            for path in candidates:
-                self.data.update_file(path)
-            self.misc.echom('{0} files successfully added!'
-                            .format(len(candidates)))
-        else:
-            self.misc.echom('operation aborted')
-
 
     def Reset(self):
         """To clear the entire database."""

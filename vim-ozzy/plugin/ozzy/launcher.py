@@ -11,6 +11,8 @@ from __future__ import division
 import os
 import re
 import vim
+from math import *
+
 import ozzy.input
 import ozzy.utils.misc
 import ozzy.utils.settings
@@ -74,8 +76,8 @@ class Launcher:
         vim.command("syntax clear")
         vim.command('syn match OzzyLauncherPaths /\~\=\/.\+/')
         if input:
-            vim.command('syn match OzzyLauncherMatches /\%<{0}v\c{1}/'.format(
-                max_len + 2, input))
+            vim.command("syn match OzzyLauncherMatches /\%<{0}v\c{1}/".format(
+                max_len + 2, input.encode('utf-8', 'ignore')))
 
     def close_launcher(self):
         """To close the matches list window."""
@@ -145,6 +147,7 @@ class Launcher:
 
     def format_record(self, path, max_len):
         """To format a match displayed in the matches list window."""
+        path = path.encode('utf-8')
         path = path.replace(os.path.expanduser('~'), '~')
         return '  {0: <{2}}{1}'.format(
                     os.path.split(path)[1], path, max_len + 4)
@@ -195,7 +198,8 @@ class Launcher:
         while True:
 
             # Display the prompt and the text the user has been typed so far
-            vim.command("echo '{0}{1}'".format(self.prompt, self.input_so_far))
+            vim.command("echo '{0}{1}'".format(
+                self.prompt, self.input_so_far.encode('utf-8')))
 
             # Get the next character
             input.reset()
@@ -210,7 +214,7 @@ class Launcher:
 
             elif input.BS:
                 # This acts just like the normal backspace key
-                self.input_so_far = self.input_so_far[:-1]
+                self.input_so_far = u"{0}".format(self.input_so_far)[:-1]
                 # Reset the position of the selection in the matches list
                 # because the list has to be rebuilt
                 self.curr_pos = None
@@ -248,7 +252,7 @@ class Launcher:
                 # A printable character has been pressed. We have to remember
                 # it so that in the next loop we can display exactly what the
                 # user has been typed so far
-                self.input_so_far += input.CHAR
+                self.input_so_far += input.CHAR.decode('utf-8')
 
                 # Reset the position of the selection in the matches list
                 # because the list has to be rebuilt

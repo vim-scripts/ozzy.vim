@@ -1,6 +1,6 @@
 *ozzy.txt* *ozzy*
 
-                                Ozzy v2.0.1 
+                                 Ozzy v3.0
                                      ~ 
                               Reference Manual
 
@@ -42,17 +42,6 @@ there is list of all the mappings you can use to interact with the window:
 
     * CTRL+D: delete the selected file (it won't show up anymore in the list
               until you'll edit that file again).
-
-
-------------------------------------------------------------------------------
-OzzyIndex                                                          *OzzyIndex*
-
-Add recursively to the database all files under the current directory that have
-any of the extensions you give as argument.
-
-```
-OzzyIndex py,md,cpp
-```
 
 
 ------------------------------------------------------------------------------

@@ -4,8 +4,8 @@
 " Mantainer: Giacomo Comitti (https://github.com/gcmt)
 " Url: https://github.com/gcmt/ozzy.vim
 " License: MIT
-" Version: 0.2.0
-" Last Changed: 9 Feb 2013
+" Version: 3.0
+" Last Changed: 27/03/2013
 " ============================================================================
 
 " Init {{{
@@ -63,7 +63,6 @@ python ozzy_plugin = Ozzy()
 " Commands
 command! Ozzy py ozzy_plugin.Open()
 command! OzzyReset py ozzy_plugin.Reset()
-command! -nargs=1 OzzyIndex py ozzy_plugin.Index(<q-args>)
 
 
 " Autocommands

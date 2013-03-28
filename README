@@ -4,6 +4,17 @@ This is a mirror of http://www.vim.org/scripts/script.php?script_id=4256
 Open your files from wherever you are. If you have edited a file at least once
 you can open that file using just its name.
 
+screenshot: https://raw.github.com/gcmt/ozzy.vim/master/extra/screenshot.png
+
+Calculator on the fly
+------------------------------------------------------------------------------------------
+
+Ozzy integrates a tiny calculator. Just type some arithmetic expressions in the 
+command line and you'll see the result. The expressions must follow the `python` 
+notation, so you'll have to use the `**` operator in order to compute the power of a 
+number. All functions from the python `math` module are also available.
+
+
 Commands
 ------------------------------------------------------------------------------------------
 
@@ -14,25 +25,21 @@ popup at the bottom of the Vim window with a special command line. Start typing
 the file you want to open and you'll see the list updating as you type. Below there
 is list of all the mappings you can use to interact with the window:
 
-* UP, TAB, CTRL+K: move up in the list.
-* DOWN, CTRL+J: move down in the list.
-* RETURN, CTRL+O, CTRL+E: open the selected file.
-* ESC, CTRL+C: close the list.
-* CTRL+D: delete the selected file (it won't show up anymore in the list until
-you'll edit that file again).
+  * UP, TAB, CTRL+K: move up in the list.
+
+  * DOWN, CTRL+J: move down in the list.
+
+  * RETURN, CTRL+O, CTRL+E: open the selected file.
+
+  * ESC, CTRL+C: close the list.
+
+  * CTRL+D: delete the selected file (it won't show up anymore in the list until
+                     you'll edit that file again).
 
 
-OzzyIndex
+OzzyReset
 
-Add recursively to the database all files under the current directory that have
-any of the extensions you give as argument.
-
-  e.g. OzzyIndex py,md,cpp
-
-
-OzzyReset 
-
-Remove all the entries from the database.
+To remove all the entries from the database.
 
 
 ------------------------------------------------------------------------------------------
@@ -41,5 +48,4 @@ For information about other available commands and settings see
 the full documentation. (:help ozzy) 
 
 Get latest versions at: https://github.com/gcmt/ozzy.vim
-
 

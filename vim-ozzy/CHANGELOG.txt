@@ -1,6 +1,11 @@
 
 # CHANGELOG
 
+v3.0
+
+	- Add unicode support for file names.
+	- Remove the OzzyIndex command.
+
 v2.0.1
 
 	- Fix issues with database creation on linux platforms.

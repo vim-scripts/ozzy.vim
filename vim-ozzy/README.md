@@ -1,6 +1,6 @@
 # Ozzy.vim
 
-**v2.0.1**
+**v3.0**
 
 Open your files from wherever you are. If you have edited a file at least once
 then you can open that file using just its name.
@@ -12,12 +12,22 @@ then you can open that file using just its name.
 
 * vim 7.3+
 * vim compiled with python 2.6+
+* Unix, Mac OS
 
 
 ## Installation
 
 Extract the content of the folder into the `$HOME/.vim` directory or use your favourite
 package manager.                          
+
+
+## Side Effects
+
+Note that Ozzy will create a small persistent database file on your pc for storing file names 
+and statistics about their usage.
+On Mac platforms this will be placed into the `$HOME/Library/Application Support/Ozzy` folder,
+whereas on Linux platform it will reside into the `$HOME/.ozzy` folder. You
+have to remove this folder manually the day you'll want to uninstall the plugin.
 
 
 ## Commands
@@ -38,19 +48,16 @@ window:
 you'll edit that file again).
 
 
-### OzzyIndex
-
-Add recursively to the database all files under the current directory that have
-any of the extensions you give as argument.
-
-```
-OzzyIndex py,md,cpp
-```
-
-
 ### OzzyReset 
 
 To remove all the entries from the database.
+
+## Calculator on the fly
+
+Ozzy integrates a tiny calculator. Just type some arithmetic expressions in the command line 
+and you'll see the result. The expressions must follow the `python` notation, so you'll have to use 
+th `**` operator in order to compute the power of a number. All functions from the python `math` module
+are also available.
 
 
 ## Settings

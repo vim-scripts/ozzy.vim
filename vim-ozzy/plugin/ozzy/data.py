@@ -24,14 +24,7 @@ class Data:
 
     def close(self):
         """To perform some cleanup actions."""
-        self.db_maintenance()
         self.db.close()
-
-    def db_maintenance(self):
-        """To remove no more existent files from the database."""
-        to_delete = (r.path for r in self.db.all()
-                     if not os.path.exists(r.path))
-        self.db.delete_many(to_delete)
 
     def update_file(self, bufname):
         """To add or update the given file."""
@@ -84,7 +77,13 @@ class Data:
 
         matches = list(self.db.get(seed, exclude))
         if matches:
+
             for r in matches:
+
+                if not os.path.exists(r.path):
+                    self.delete_file(r.path)
+                    continue 
+
                 bytime[r.path] = self.misc.to_minutes(now - r.last_access)**2
                 bydist[r.path] = self.distance(cwd, r.path)**2
                 byfreq[r.path] = 1.0 / sqrt(r.frequency)
