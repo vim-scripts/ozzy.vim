@@ -15,8 +15,8 @@ sys.path.insert(0, os.path.split(
 
 import ozzy.data
 import ozzy.launcher
-import ozzy.utils.settings
 import ozzy.utils.misc
+import ozzy.utils.settings
 
 
 class Ozzy(object):
@@ -27,27 +27,48 @@ class Ozzy(object):
         self.settings = ozzy.utils.settings
         self.misc = ozzy.utils.misc
 
+        # mode = 0 for global mode, 1 for project mode
+        if self.settings.get('default_mode') == 'project':
+            self.mode = 1
+        else:
+            self.mode = 0
+
+        self.error_state = False
+
         # set the path for the application data location
         self.data_path = self.data_path()
         if not self.data_path:
+            self.error_state = True
             self.misc.echom('The platform you are running is not supported')
             return
+
+        # create the database if it does not exist yet
         try:
             if not os.path.exists(self.data_path):
                 os.mkdir(self.data_path)
         except IOError:
+            self.error_state = True
             self.misc.echoerr('Ozzy cannot create its database '
-                              'under {0}'.format(self.data_path))
+                                'under {0}'.format(self.data_path))
+            return
 
-        self.data = ozzy.data.Data(self.data_path + '/index.db')
-        self.launcher = ozzy.launcher.Launcher(self.data)
+        self.data = ozzy.data.Data(self, self.data_path + '/index.db')
+        self.launcher = ozzy.launcher.Launcher(self, self.data)
+
+    def exec_if_valid_state(f):
+        def wrapper(self, *args, **kwargs):
+            if self.error_state:
+                return
+            else:
+                return f(self, *args, **kwargs)
+        return wrapper
 
     def data_path(self):
         """To set the path for the application data location."""
         if sys.platform == 'darwin':
             return (os.path.expanduser('~') +
                     '/Library/Application Support/Ozzy')
-        elif sys.platform == 'linux2':
+        else:
             return os.path.expanduser('~') + '/.ozzy'
 
     def should_ignore(self, bufname):
@@ -72,6 +93,7 @@ class Ozzy(object):
 
         return False
 
+    @exec_if_valid_state
     def update_buffer(self):
         """To update the attributes of the opened buffer."""
         buf = vim.current.buffer.name
@@ -86,14 +108,17 @@ class Ozzy(object):
                         vim.command("let b:ozzy_buffer_flag = 1")
                         self.data.update_file(buf)
 
+    @exec_if_valid_state
     def close(self):
         """To perform some cleanup actions."""
         self.data.close()
 
+    @exec_if_valid_state
     def Open(self):
         """To open the launcher."""
         self.launcher.open()
 
+    @exec_if_valid_state
     def Reset(self):
         """To clear the entire database."""
         answer = vim.eval("input('Are you sure? (yN): ')")
@@ -101,3 +126,14 @@ class Ozzy(object):
         if answer in ['y', 'Y', 'yes', 'Yes', 'sure']:
             self.data.clear_index()
             self.misc.echom('reset successful!')
+
+    @exec_if_valid_state
+    def ToggleMode(self):
+        """Toggle between 'project' (1) and 'global' (0) mode."""
+        self.mode = 1 - self.mode
+
+        # give feedback
+        if self.mode:
+            self.misc.echom('project mode on')
+        else:
+            self.misc.echom('global mode on')

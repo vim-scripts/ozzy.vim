@@ -10,16 +10,22 @@ on the database such as data retrieval, data updates and data removal.
 import os
 import vim
 from math import sqrt
-from itertools import izip
 from datetime import datetime
-import ozzy.utils.misc
+from itertools import izip, ifilter
+
 import ozzy.db
+import ozzy.utils.misc
+import ozzy.utils.settings
 
 
 class Data:
 
-    def __init__(self, db_path):
+    def __init__(self, plug, db_path):
+        # modules reference shortcuts
+        self.settings = ozzy.utils.settings
         self.misc = ozzy.utils.misc
+
+        self.plug = plug
         self.db = ozzy.db.DBProxy(db_path)
 
     def close(self):
@@ -69,30 +75,33 @@ class Data:
 
     def make_scoreboard(self, seed, exclude=None):
         """To compute the score for each match, the lower the better."""
-        cwd = vim.eval('getcwd()')
+        cwd = self.misc.curr_file_dir()
         now = datetime.now()
-        bytime = {}
-        bydist = {}
-        byfreq = {}
+        bytime = {}; bydist = {}; byfreq = {}
 
-        matches = list(self.db.get(seed, exclude))
-        if matches:
+        matches = self.db.get(seed, exclude)
 
-            for r in matches:
+        root = self.misc.find_root(cwd, self.settings.get('root_markers'))
+        if self.plug.mode and root:
+            matches = ifilter(lambda r: r.path.startswith(root), matches)
 
-                if not os.path.exists(r.path):
-                    self.delete_file(r.path)
-                    continue 
+        for r in matches:
 
-                bytime[r.path] = self.misc.to_minutes(now - r.last_access)**2
-                bydist[r.path] = self.distance(cwd, r.path)**2
-                byfreq[r.path] = 1.0 / sqrt(r.frequency)
+            # delete the file from the database if it does not exist
+            if not os.path.exists(r.path):
+                self.delete_file(r.path)
+                continue
+
+            bytime[r.path] = self.misc.to_minutes(now - r.last_access)**2
+            bydist[r.path] = self.distance(cwd, r.path)**2
+            byfreq[r.path] = 1.0 / sqrt(r.frequency)
+
+        if bytime:
 
             maxtime = max(bytime.values()) * 1.0
             maxdist = max(bydist.values()) * 1.0
-
             return (((bytime[path] / maxtime + bydist[path] / maxdist
                     + byfreq[path]), path)
-                    for path in byfreq)
+                    for path in bytime)
         else:
             return []

@@ -1,6 +1,6 @@
 *ozzy.txt* *ozzy*
 
-                                 Ozzy v3.0
+                                 Ozzy v3.1
                                      ~ 
                               Reference Manual
 
@@ -17,12 +17,35 @@ CONTENTS                                                       *ozzy-contents*
 ==============================================================================
 1. Overview                                                    *ozzy-overview*
 
-Open your files from wherever you are. If you have edited a file at least once
-then you can open that file using just its name.   
+Ozzy is an useful companion for opening files from all over the file system.
+You just have to open the launcher (via the Ozzy command), start typing
+something, and a list of matches from where you can choose the file to open
+will appear.
+
+Note, however, that Ozzy does not perform a runtime file search as you type.
+Instead, it keeps track of all files you open over time into an external
+database and you have to edit a file at least once as you usually do (eg. via
+the :e command) before Ozzy can do it for you.
+
+
+Requirements
+
+    * Vim 7.3+
+    * Vim compiled with python 2.6+
+    * Unix, Mac OSX
+
+
+Hidden calculator
+
+Ozzy integrates a tiny calculator. Just type some arithmetic expressions in the
+command line and you'll see the result. The expressions must follow the python
+notation, so you'll have to use the `**` operator in order to compute the power
+of a number. All functions from the python `math` module are also available.
 
 
 ==============================================================================
 2. Commands                                                    *ozzy-commands*
+
 
 ------------------------------------------------------------------------------
 Ozzy                                                                    *Ozzy*
@@ -45,6 +68,28 @@ there is list of all the mappings you can use to interact with the window:
 
 
 ------------------------------------------------------------------------------
+OzzyToggleMode                                                *OzzyToggleMode*
+
+To toggle between `project` and `global` mode. When `project` mode is on, the
+search is limited to the current project directory and files outside the
+project directory won't be listed among matches. Ozzy locates the project the
+current project by looking for special markers in the directories up the
+directory tree.  By default Ozzy use the following markers to determine the
+project root: `.git`, `.hg`, `.svn`, `AndroidManifest.xml`.  You can override
+this behavior via the `g:ozzy_root_markers` setting.  When `global` mode is on,
+the search won't be limited to the current project directory and you can search
+through all files tracked so far.
+
+The default mode is `global` but you can change this behavior via the
+`g:ozzy_default_mode` setting.
+
+
+NOTE: whether or not you've setted the `autochdir` vim option, Ozzy will
+always use the path of the currently open file to determine the current working
+directory.
+
+
+------------------------------------------------------------------------------
 OzzyReset                                                          *OzzyReset*
 
 To remove all the entries from the database.
@@ -52,6 +97,27 @@ To remove all the entries from the database.
 
 ==============================================================================
 3. Settings                                                    *ozzy-settings*
+
+
+------------------------------------------------------------------------------
+g:ozzy_default_mode                                      *g:ozzy_default_mode*
+
+
+With this setting you can specify the mode that will be active when Vim starts.
+You can use either the `global` or the `project` values for this setting.
+
+default: `global`
+
+
+------------------------------------------------------------------------------
+g:ozzy_root_markers                                      *g:ozzy_root_markers*
+
+
+With this setting you can specify you own root markers so that Ozzy can locate
+the project root even if your project root does not include any of the default
+markers.
+
+default: [`.git`, `.hg`, `.svn`, `AndroidManifest.xml`]
 
 
 ------------------------------------------------------------------------------
@@ -113,7 +179,17 @@ g:ozzy_prompt                                                  *g:ozzy_prompt*
 With this setting you can customize the look of the prompt used by the
 `Ozzy` command.
 
-default: ' ❯ '
+default: ' >> '
+
+
+------------------------------------------------------------------------------
+g:ozzy_project_mode_flag & g:ozzy_global_mode_flag
+
+If you want to know which mode you are in when you open the launcher you can
+set this variables to strings that let you distinguish between the two modes.
+
+default: ''
+
 
 ==============================================================================
 4. About                                                          *ozzy-about*

@@ -20,10 +20,11 @@ import ozzy.utils.settings
 
 class Launcher:
 
-    def __init__(self, data_layer):
+    def __init__(self, plug, data_layer):
         self.settings = ozzy.utils.settings
         self.misc = ozzy.utils.misc
 
+        self.plug = plug
         self.data = data_layer
         self.name = 'ozzy.launcher'
         self.prompt = self.settings.get('prompt')
@@ -148,7 +149,7 @@ class Launcher:
     def format_record(self, path, max_len):
         """To format a match displayed in the matches list window."""
         path = path.encode('utf-8')
-        path = path.replace(os.path.expanduser('~'), '~')
+        path = path.replace(os.path.realpath(os.path.expanduser('~')), '~')
         return '  {0: <{2}}{1}'.format(
                     os.path.split(path)[1], path, max_len + 4)
 
@@ -197,15 +198,20 @@ class Launcher:
         # Start the input loop
         while True:
 
+            if self.plug.mode:
+                mode = self.settings.get('project_mode_flag')
+            else:
+                mode = self.settings.get('global_mode_flag')
+
             # Display the prompt and the text the user has been typed so far
-            vim.command("echo '{0}{1}'".format(
-                self.prompt, self.input_so_far.encode('utf-8')))
+            vim.command("echo '{0}{1}{2}'".format(
+                mode, self.prompt, self.input_so_far.encode('utf-8')))
 
             # Get the next character
             input.reset()
             input.get()
 
-            if (input.RETURN or input.CTRL and input.CHAR == 'o' 
+            if (input.RETURN or input.CTRL and input.CHAR == 'o'
                 or input.CTRL and input.CHAR == 'e'):
                 # The user have chosen the currently selected match
                 if self.open_selected_file():

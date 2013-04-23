@@ -1,18 +1,26 @@
 
 # CHANGELOG
 
+v3.1
+
+  - Add new 'project mode' functionality to limit searches in the current project directory
+  - Add new command 'OzzyToggleMode'
+  - Add new settings 'g:ozzy_project_mode_flag' and 'g:ozzy_global_mode_flag'
+  - Add new settings 'g:ozzy_default_mode' and 'g:ozzy_root_markers' 
+  - Change the default look of the prompt
+
 v3.0
 
-	- Add unicode support for file names.
-	- Remove the OzzyIndex command.
+  - Add unicode support for file names.
+  - Remove the OzzyIndex command.
 
 v2.0.1
 
-	- Fix issues with database creation on linux platforms.
+  - Fix issues with database creation on linux platforms.
 
 v2.0
 
-	- Add a brand new interface for the Ozzy command.
+  - Add a brand new interface for the Ozzy command.
 
 v1.0
 
