@@ -10,8 +10,8 @@ import os
 import vim
 import sys
 
-sys.path.insert(0, os.path.split(
-    vim.eval('fnameescape(globpath(&runtimepath, "plugin/ozzy.py"))'))[0])
+sys.path.insert(0, os.path.dirname(
+    vim.eval('globpath(&runtimepath, "plugin/ozzy.py")')))
 
 import ozzy.data
 import ozzy.launcher
@@ -48,8 +48,8 @@ class Ozzy(object):
                 os.mkdir(self.data_path)
         except IOError:
             self.error_state = True
-            self.misc.echoerr('Ozzy cannot create its database '
-                                'under {0}'.format(self.data_path))
+            self.misc.echom('Ozzy cannot create its database '
+                            'under {0}'.format(self.data_path))
             return
 
         self.data = ozzy.data.Data(self, self.data_path + '/index.db')
@@ -73,7 +73,7 @@ class Ozzy(object):
 
     def should_ignore(self, bufname):
         """To ingnore some type of files."""
-        fname = os.path.split(bufname)[1]
+        fname = os.path.basename(bufname)
         for patt in self.settings.get('ignore'):
 
             if patt.startswith('*.'):

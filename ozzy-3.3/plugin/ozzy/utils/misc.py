@@ -9,17 +9,12 @@ around vim functions.
 
 import os
 import vim
+from itertools import izip
 
 
 def echom(msg):
     """Display a simple feedback to the user via the command line."""
     vim.command('echom "[ozzy] {0}"'.format(msg.replace('"', '\"')))
-
-
-def echoerr(msg):
-    """Display a simple error feedback to the user via the command line."""
-    vim.command('echohl WarningMsg|echom "[ozzy] {0}"|echohl None'.format(
-        msg.replace('"', '\"')))
 
 
 def escape_spaces(s):
@@ -32,17 +27,17 @@ def to_minutes(td):
     return td.days * 1440 + td.seconds / 60.0
 
 
+def to_hours(td):
+    """To return the total hours of a timedelta object."""
+    return td.days * 24.0 + td.seconds / 3600.0
+
+
 def cwd():
-    """To return the current vim cwd."""
-    return vim.eval('getcwd()')
-
-
-def curr_file_dir():
     """To return the current file directory."""
     if vim.current.buffer.name:
-        return os.path.split(vim.current.buffer.name)[0]
+        return os.path.dirname(vim.current.buffer.name)
     else:
-        return os.path.sep
+        return vim.eval('getcwd()')
 
 
 def redraw():
@@ -72,4 +67,31 @@ def find_root(path, root_markers):
     elif any(m in os.listdir(path) for m in root_markers):
         return path
     else:
-        return find_root(os.path.split(path)[0], root_markers)
+        return find_root(os.path.dirname(path), root_markers)
+
+
+def distance(start, dest):
+    """To find the distance (in directory tree levels) between two
+    directories."""
+    sep = os.path.sep
+
+    if dest.startswith(start):
+        # 'dest' is a subdirectory of 'start' so we just count the
+        # number of directories between them ('dest' included)
+        p = dest.replace(start, '')
+        return len(p.split(sep)[1:])
+
+    else:
+        # from paths to lists
+        start_lst = start.strip(sep).split(sep)
+        dest_lst = dest.strip(sep).split(sep)
+
+        for d1, d2 in zip(start_lst, dest_lst):
+            if d1 == d2:
+                # remove common ancestor
+                start_lst.remove(d1)
+                dest_lst.remove(d1)
+            else:
+                break
+
+        return len(start_lst) + len(dest_lst) - 2

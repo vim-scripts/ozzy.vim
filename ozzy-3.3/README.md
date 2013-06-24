@@ -1,24 +1,24 @@
-# Ozzy.vim
+# ozzy.vim
 
-**v3.1**
+**v3.3**
 
 Ozzy is an useful companion for opening files from all over the file system.
-You just have to open the launcher (via the Ozzy command), start typing something, 
-and a list of matches from where you can choose the file to open will appear.
+You just have to open the launcher (via the `Ozzy` command), start typing something, 
+and a list of files matches will appear.
 
 Note, however, that Ozzy does not perform a runtime file search as you type.
-Instead, it keeps track of all files you open over time into an external database
-and you have to edit a file at least once as you usually do (eg. via the :e
+Instead, it keeps track of all files you open over time into an external database, so 
+that you have to open a file at least once as you usually do (eg. via the :e
 command) before Ozzy can do it for you.
 
-![Screenshot](/extra/screenshot.png "A view of the launcher")   
+![Screenshot](/extra/screenshot.jpg "A view of the launcher")   
 
 
 ## Requirements
 
 * Vim 7.3+
 * Vim compiled with python 2.6+
-* Unix, Mac OSX
+* Unix, Mac OS X
 
 
 ## Installation
@@ -51,8 +51,8 @@ there is list of all the mappings you can use to interact with the window:
 * `DOWN`, `CTRL+J`: move down in the list.
 * `RETURN`, `CTRL+O`, `CTRL+E`: open the selected file.
 * `ESC`, `CTRL+C`: close the list.
-* `CTRL+D`: delete the selected file (it won't show up anymore in the list
-until you'll edit that file again).
+* `CTRL+D`: delete the selected file (it won't show up anymore in the list until you'll edit that file again).
+* `CTRL+U`: clear the current search.
 
 
 ### OzzyToggleMode
@@ -71,7 +71,7 @@ The default mode is `global` but you can change this behavior via the
 `g:ozzy_default_mode` setting.
 
 
-**NOTE**: whether or not you've setted the `autochdir` vim option, Ozzy will
+**NOTE**: whether or not the `autochdir` vim option is set, Ozzy will
 always use the path of the currently open file to determine the current working
 directory.
 
@@ -94,9 +94,9 @@ of a number. All functions from the python `math` module are also available.
 ### g:ozzy_default_mode
 
 With this setting you can specify the mode that will be active when Vim starts.
-You can use either the `global` or the `project` values for this setting.
+You can use either `global` or `project` as values for this setting.
 
-default: `global`
+default: "global"
 
 
 ### g:ozzy_root_markers
@@ -105,7 +105,22 @@ With this setting you can specify you own root markers so that Ozzy can locate
 the project root even if your project root does not include any of the default
 markers.
 
-default: [`.git`, `.hg`, `.svn`, `AndroidManifest.xml`]
+default: [".git", ".hg", ".svn", "AndroidManifest.xml"]
+
+
+### g:ozzy_ignore_case
+
+Set this setting to 0 to enable case sensitive search.
+
+default: 1
+
+
+### g:ozzy_show_file_names
+
+If this setting is equal to 1, only the container directory is displayed to the 
+right of the file name in the launcher window.
+
+default: 0   
 
 
 ### g:ozzy_ignore  
@@ -128,14 +143,14 @@ all file names that exactly match `<file name>` (extension included).
 
 * `<partial path>/`   
 all files that contain `<partial path>` in their paths.    
-*examples*: `doc/` (every file in a folder called 'doc') 
+*examples*: `doc/` (every file in a folder called "doc") 
 
 * `/<full path>`   
 all files contained in `<full path>`.   
 *examples*: `/Users/you/misc`
 
 ```
-e.g. let g:ozzy_ignore = ['*.txt', '/Users/you/misc', 'doc/', 'LICENSE']
+e.g. let g:ozzy_ignore = ["*.txt", "/Users/you/misc", "doc/", "LICENSE"]
 ```
          
 
@@ -148,7 +163,7 @@ With this setting you can specify the directories you want to track:
 Only files under any of these directories will be tracked.
 
 ```
-e.g. let g:ozzy_track_only = ['/Users/you/dropbox', 'Users/you/dev']
+e.g. let g:ozzy_track_only = ["/U""rs/you/dropbox", "Users/you/dev"]
 ```
 
 default: []

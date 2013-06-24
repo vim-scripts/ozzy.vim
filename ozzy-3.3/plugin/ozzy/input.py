@@ -20,30 +20,33 @@ class Input:
         self.RETURN = self.ESC = self.TAB = None
         self.MOUSE = self.CTRL = self.INTERRUPT = None
         self.CHAR = None
-        vim.command("let g:ozzy_launcher_char = ''")
-        vim.command("let g:ozzy_launcher_interrupt = 0")
+        vim.command("let g:_pse_launcher_char = ''")
+        vim.command("let g:_pse_launcher_interrupt = 0")
 
     def get(self):
         """To read the key pressed by the user."""
-         # FIX: not so cool, but the usual try/except python statement
-         # seems not catching the KeyboardInterrupt exception. This is the
-         # only way to get the laucher closed with ctrl+c.
+        self.reset()
+
         vim.command("""
             try |
-             let g:ozzy_launcher_char = getchar() |
+             let g:_pse_launcher_char = getchar() |
             catch |
-             let g:ozzy_launcher_interrupt = 1 |
+             let g:_pse_launcher_interrupt = 1 |
             endtry
         """)
 
-        if vim.eval('g:ozzy_launcher_interrupt') == '1':
-            self.INTERRUPT = True  # Ctrl + c
+        if vim.eval('g:_pse_launcher_interrupt') == '1': # Ctrl + c
+            self.CTRL = True
+            self.CHAR = 'c'
+            self.INTERRUPT = True
             return
         else:
-            raw_char = vim.eval('g:ozzy_launcher_char')
+            nr_char = vim.eval('g:_pse_launcher_char')
 
-        nr = int(vim.eval("str2nr('{0}')".format(raw_char)))
+        nr = int(vim.eval("str2nr('{0}')".format(nr_char)))
+
         if nr != 0:
+
             if nr == 13:
                 self.RETURN = True
             elif nr == 27:
@@ -55,9 +58,11 @@ class Input:
                 self.CHAR = vim.eval("nr2char({0})".format(nr + 96))
             else:
                 self.CHAR = vim.eval("nr2char({0})".format(nr))
+
         else:
+
             # Remove the first character 0x80
-            c = vim.eval("strpart('{0}', 1)".format(raw_char))
+            c = vim.eval("strpart('{0}', 1)".format(nr_char))
             if c == 'kl':
                 self.LEFT = True
             elif c == 'kr':

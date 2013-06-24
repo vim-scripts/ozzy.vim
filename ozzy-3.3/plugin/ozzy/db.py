@@ -63,7 +63,7 @@ class DBProxy(object):
 
     def get(self, target, exclude=None):
         """To get all rows whose 'fname' field contains 'target' ."""
-        target = u"%{0}%".format(target)
+        target = u"%{0}%".format(target.replace('%', '\%'))
         if exclude:
             exclude = u"{0}".format(exclude.decode('utf-8'))
         query = "SELECT * FROM files_index WHERE fname LIKE ?"
@@ -83,7 +83,7 @@ class DBProxy(object):
         try:
             sql = "INSERT INTO files_index VALUES (?, ?, ?, ?)"
             self.conn.execute(sql,
-                (path, os.path.split(path)[1], 1, last_access))
+                (path, os.path.basename(path), 1, last_access))
         except Exception as e:
             pass
 
@@ -109,7 +109,7 @@ class DBProxy(object):
     def delete_many(self, paths):
         """To delete a bunch of records given their paths."""
         sql = "DELETE FROM files_index WHERE path=?"
-        self.conn.executemany(sql, [(u"{0}".format(path),) 
+        self.conn.executemany(sql, [(u"{0}".format(path),)
                                     for path in paths])
 
     @commit

@@ -1,0 +1,116 @@
+
+# CHANGELOG
+
+v3.3
+
+	- Minor changes in the matching process. Now it's hopefully a little more intelligent.
+	- Improve vim settings management in the launcher window.
+	- Add new setting 'g:ozzy_show_file_names'.
+	- Fix: the size of opened windows is no more affected by the opening of the launcher.
+	- Fix: issues with characters such as '%' and quotes.
+	- Fix: the launcher now gets closed correctly with Ctrl+C.
+
+v3.2
+
+	- Fix: file paths containing white spaces are now correctly opened.
+
+v3.1
+
+	- Add new 'project mode' functionality to limit searches in the current project directory
+	- Add new command 'OzzyToggleMode'
+	- Add new settings 'g:ozzy_project_mode_flag' and 'g:ozzy_global_mode_flag'
+	- Add new settings 'g:ozzy_default_mode' and 'g:ozzy_root_markers'
+	- Change the default look of the prompt
+
+v3.0
+
+	- Add unicode support for file names.
+	- Remove the OzzyIndex command.
+
+v2.0.1
+
+	- Fix issues with database creation on linux platforms.
+
+v2.0
+
+	- Add a brand new interface for the Ozzy command.
+
+v1.0
+
+	- Major revision: removed all superfluous functionalities. Now only Ozzy,
+	  OzzyReset, OzzyInspect and other minor commands and remain active.
+
+v0.9.1
+
+	- Add new setting g:ozzy_db_path to set a custom database path.
+	- Fix possible conflicts with other plugins.
+
+v0.9
+
+	- Add new inspector related options: 'g:ozzy_filter_inspector_by_scope',
+      'g:ozzy_hide_scope_inspector', 'g:ozzy_show_env_inspector'.
+	- Add new mappings in the inspector buffer: 's', 'x', 'z', 'e'.
+
+v0.8
+
+	- Add new OzzyScope command.
+	- Backward incompatibility issue: 'most_recent' and 'most_frequent' modes renamed respectively to 
+      'most recent' and 'most frequent'. Removed 'g:   ozzy_open_files_recursively' option.
+
+v0.7.2
+
+	- Fix some behavior issues with OzzyAddDirectory, OzzyOpen commands and in the inspector buffer.
+
+v0.7.1
+
+	- Add useful information in the inspector buffer.
+	- Improve command line completion.
+	- In 'by distance' ordering, files that have the same relative distance are ordered by last access time.  
+
+v0.7
+
+	- Improve memory management.  
+	- Add support for filenames that contain non english characters.
+	- Add new arguments '..' and '...' for the OzzyAddDirectory command.
+	- Add new argument '%' for the OzzyRemove command.
+	- Add new 'c', '*' and '_' mappings in the Inspector buffer.
+	- Command line completions can be ordered by relative distance to the cwd.
+	- Minor bug fixes.
+	- Backward incompatibility issue: the database managed by this version of Ozzy is no more compatible with databases created in previous versions. 
+
+v0.6.1
+
+	- Improve performances. 
+	- Improve cursor management inside the Inspector buffer.  
+	- Fix: inconsistent internal buffers management.
+
+v0.6
+
+	- Now Ozzy opens all files recursively when using the Ozzy command with a directory name as argument.   
+	- Fix: error message using OzzyKeepLast command.  
+
+v0.5
+
+	- Add OzzyAddDirectory command to quickly add to the database all files contained into a given directory. 
+	- Add case insensitive files opening and command line completion.
+	- Minor fix.
+
+v0.4
+
+	- Improv command line completion.
+	- Add new mode 'context'.
+	- Fix: error when opening a file with spaces.
+
+v0.3
+
+    - Add ability to open multiple files at once.
+    - Mnor fixes.
+
+v0.2
+
+	- Add command line completion.
+	- Minor fixes.
+
+v0.1
+
+	- First stable release.      

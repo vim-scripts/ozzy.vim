@@ -34,19 +34,45 @@ class Launcher:
         self.curr_entries_number = 0
         self.curr_file = None
         self.curr_win = None
+        self.mapper = {}
         self.orig_settings = {}
         self.max_entries = self.settings.get('max_entries', int)
-        self.RE_PATH = re.compile('\A▸\s\S+\s+(\S+)')
         self.RE_MATH = re.compile('(\d+|\+|\*|\/|-)')
 
         # setup highlight groups
-        vim.command('hi link OzzyLauncherPaths Comment')
-        vim.command('hi link OzzyLauncherMatches Identifier')
+        self.setup_colors()
+
+    def setup_colors(self):
+        """Setups highlight groups according to the current settings."""
+
+        paths = self.settings.get("paths_color")
+        matches = self.settings.get("matches_color")
+        dirs = self.settings.get("last_dir_color")
+
+        if vim.eval("&background") == 'dark':
+            p = self.settings.get("paths_color_darkbg")
+            path = p if p else paths
+            m = self.settings.get("matches_color_darkbg")
+            matches = m if m else matches
+            d = self.settings.get("last_dir_color_darkbg")
+            dirs = d if d else dirs
+
+        for g, c in (("Paths", paths), ("Matches", matches), ("Dirs", dirs)):
+            if "=" not in c:
+                # a group is found
+                vim.command("hi link Ozzy{0} {1}".format(g, c))
+            else:
+                vim.command("hi Ozzy{0} {1}".format(g, c))
 
     def restore_old_settings(self):
         """Restore original settings."""
+        specials = ("@/",)
         for sett, val in self.orig_settings.items():
-            vim.command('set {0}={1}'.format(sett, val))
+            if sett in specials:
+                vim.command("""let {}="{}" """.format(
+                    sett, val.replace('"', '\\"')))
+            else:
+                vim.command('set {0}={1}'.format(sett, val))
 
     def reset_launcher(self):
         self.input_so_far = ''
@@ -54,6 +80,7 @@ class Launcher:
         self.curr_pos = None
         self.curr_entries_number = 0
         self.curr_file = None
+        self.mapper = {}
 
     def setup_buffer(self):
         """To setup buffer properties of the matches list window."""
@@ -67,7 +94,13 @@ class Launcher:
         vim.command("setlocal nowrap")
         vim.command("setlocal nonumber")
         vim.command("setlocal cursorline")
-        # setlocal seems not working
+        vim.command("setlocal nolist")
+        vim.command("setlocal nospell")
+        vim.command("setlocal textwidth=0")
+        vim.command('setlocal colorcolumn=0')
+        vim.command("try|setlocal norelativenumber|catch|endtry")
+        self.orig_settings['@/'] = vim.eval('@/')
+        vim.command('let @/ = ""')
         self.orig_settings['laststatus'] = vim.eval('&laststatus')
         vim.command('setlocal laststatus=0')
         self.orig_settings['guicursor'] = vim.eval('&guicursor')
@@ -75,16 +108,19 @@ class Launcher:
 
     def highlight(self, max_len, input):
         vim.command("syntax clear")
-        vim.command('syn match OzzyLauncherPaths /\~\=\/.\+/')
+        vim.command('syn match OzzyPaths /\%>{0}c./'.format(max_len + 3))
         if input:
-            vim.command("syn match OzzyLauncherMatches /\%<{0}v\c{1}/".format(
+            vim.command("syn match OzzyMatches /\%<{0}v\c{1}/".format(
                 max_len + 2, input.encode('utf-8', 'ignore')))
 
     def close_launcher(self):
         """To close the matches list window."""
         self.misc.go_to_win(self.launcher_win)
         self.reset_launcher()
+        self.restore_old_settings()
         vim.command('q')
+        if self.curr_win:
+            self.misc.go_to_win(self.curr_win)
 
     def open_launcher(self):
         """To open the matches list window."""
@@ -101,11 +137,14 @@ class Launcher:
         self.misc.set_buffer(None)
 
         if self.is_arithmetic_expr(self.input_so_far):
+
             result = self.eval_arithmetic_expr(self.input_so_far)
+
             if result:
                 res = ' = {0}'.format(result)
             else:
                 res = ' = ...'
+
             vim.command('syntax clear')
             self.misc.set_buffer([res])
             vim.current.window.height = 1
@@ -118,13 +157,17 @@ class Launcher:
             data = [path for score, path in sorted(scoreboard, reverse=True)]
 
             if data:
+
                 data = data[-self.max_entries:]
-                m = max(len(os.path.split(path)[1]) for path in data)
+                m = max(len(os.path.basename(path)) for path in data)
+                self.mapper = dict(enumerate(data))
                 self.misc.set_buffer([self.format_record(p, m) for p in data])
                 vim.current.window.height = len(data)
                 self.highlight(m, self.input_so_far)
                 self.format_curr_line(m)
+
             else:
+
                 vim.command('syntax clear')
                 self.misc.set_buffer([' nothing found...'])
                 vim.current.window.height = 1
@@ -133,6 +176,8 @@ class Launcher:
         if self.curr_pos is not None:
             vim.current.window.cursor = (self.curr_pos + 1, 1)
         self.curr_entries_number = vim.current.window.height
+
+        vim.command("normal! 0")
 
     def is_arithmetic_expr(self, expr):
         """To detect an arithmetic expression (very naive)."""
@@ -150,8 +195,14 @@ class Launcher:
         """To format a match displayed in the matches list window."""
         path = path.encode('utf-8')
         path = path.replace(os.path.realpath(os.path.expanduser('~')), '~')
-        return '  {0: <{2}}{1}'.format(
-                    os.path.split(path)[1], path, max_len + 4)
+
+        if self.settings.get("show_file_names", bool):
+            full_path = path
+        else:
+            full_path = os.path.dirname(path)
+
+        return '  {0: <{1}}{2}'.format(
+            os.path.basename(path), max_len + 4, full_path)
 
     def format_curr_line(self, max_len):
         """To format the current line in the laucher window."""
@@ -161,26 +212,18 @@ class Launcher:
         vim.current.buffer[self.curr_pos] = '▸ ' + line[2:]
 
     def open_selected_file(self):
-        """To open the file on selected line."""
-        match = self.RE_PATH.match(vim.current.buffer[self.curr_pos])
-        if match:
-            path = match.group(1)
-            self.close_launcher()
-
-            if self.curr_win:
-                self.misc.go_to_win(self.curr_win)
-            vim.command('sil! e {0}'.format(self.misc.escape_spaces(path)))
-
-            return True
+        """To open the file on the selected line."""
+        path = self.mapper.get(self.curr_pos)
+        self.close_launcher()
+        vim.command('sil! e {0}'.format(self.misc.escape_spaces(path)))
 
     def delete_selected_file(self):
         """To delete the selected file from the database."""
-        match = self.RE_PATH.match(vim.current.buffer[self.curr_pos])
-        if match:
-            path = match.group(1)
-            if path.startswith('~'):
-                path = os.path.join(os.path.expanduser('~'), path[2:])
-            self.data.delete_file(path)
+        path = self.mapper.get(self.curr_pos)
+        if path.startswith('~'):
+            path = os.path.join(os.path.expanduser('~'), path[2:])
+
+        self.data.delete_file(path)
 
     def open(self):
         """To open the launcher."""
@@ -204,19 +247,20 @@ class Launcher:
                 mode = self.settings.get('global_mode_flag')
 
             # Display the prompt and the text the user has been typed so far
-            vim.command("echo '{0}{1}{2}'".format(
-                mode, self.prompt, self.input_so_far.encode('utf-8')))
+            prompt = """{0}{1}{2}""".format(
+                mode, self.prompt, self.input_so_far.encode('utf-8'))
+            prompt = prompt.replace("\\", "\\\\").replace('"', '\\"')
+            vim.command("echo \"{0}\"".format(prompt))
 
             # Get the next character
-            input.reset()
             input.get()
 
             if (input.RETURN or input.CTRL and input.CHAR == 'o'
                 or input.CTRL and input.CHAR == 'e'):
                 # The user have chosen the currently selected match
-                if self.open_selected_file():
-                    self.data.cache = []
-                    break
+                self.open_selected_file()
+                self.data.cache = []
+                break
 
             elif input.BS:
                 # This acts just like the normal backspace key
@@ -254,6 +298,12 @@ class Launcher:
                 self.curr_pos = None
                 self.data.cache = []
 
+            elif input.CTRL and input.CHAR == 'u':
+                # clear the current search
+                self.input_so_far = ''
+                self.curr_pos = None
+                self.data.cache = []
+
             elif input.CHAR:
                 # A printable character has been pressed. We have to remember
                 # it so that in the next loop we can display exactly what the
@@ -272,5 +322,3 @@ class Launcher:
 
             # Clean the command line
             self.misc.redraw()
-
-        self.restore_old_settings()
